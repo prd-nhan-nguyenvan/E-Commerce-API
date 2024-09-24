@@ -27,3 +27,23 @@ class ProductSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
+
+    def validate(self, data):
+        price = data.get("price", self.instance.price)
+        sell_price = data.get("sell_price", self.instance.sell_price)
+
+        if price is not None and price < 0:
+            raise serializers.ValidationError({"price": "Price cannot be negative."})
+
+        if sell_price is not None and sell_price < 0:
+            raise serializers.ValidationError(
+                {"sell_price": "Sell price cannot be negative."}
+            )
+
+        # Ensure sell price is not greater than the price
+        if sell_price > price:
+            raise serializers.ValidationError(
+                {"sell_price": "Sell price cannot be greater than the regular price."}
+            )
+
+        return data

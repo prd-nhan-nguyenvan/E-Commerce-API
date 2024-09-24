@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import ChangePasswordSerializer, RegisterSerializer
 
@@ -30,3 +31,21 @@ class ChangePasswordView(generics.UpdateAPIView):
         return Response(
             {"message": "Password updated successfully"}, status=status.HTTP_200_OK
         )
+
+
+class LogoutView(generics.GenericAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # Get the refresh token from the request body
+            refresh_token = request.data.get("refresh", None)
+            if refresh_token:
+                # Invalidate the refresh token
+                RefreshToken(refresh_token).blacklist()
+            return Response(
+                {"message": "Successfully logged out."},
+                status=status.HTTP_205_RESET_CONTENT,
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

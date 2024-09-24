@@ -5,6 +5,7 @@ from .views import (
     CategoryRetrieveBySlugView,
     CategoryRetrieveUpdateDestroyView,
     ProductListCreateView,
+    ProductRetrieveBySlugView,
     ProductRetrieveUpdateDestroyView,
 )
 
@@ -25,5 +26,10 @@ urlpatterns = [
         "products/<int:pk>/",
         ProductRetrieveUpdateDestroyView.as_view(),
         name="product-detail",
+    ),
+    path(
+        "products/slug/<slug:slug>/",
+        ProductRetrieveBySlugView.as_view(),
+        name="product-detail-by-slug",
     ),
 ]

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import ChangePasswordSerializer, RegisterSerializer
+from .serializers import ChangePasswordSerializer, LogoutSerializer, RegisterSerializer
 
 
 class RegisterView(APIView):
@@ -35,14 +35,14 @@ class ChangePasswordView(generics.UpdateAPIView):
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = LogoutSerializer  # Adding this for schema generation
 
     def post(self, request):
         try:
-            # Get the refresh token from the request body
-            refresh_token = request.data.get("refresh", None)
-            if refresh_token:
-                # Invalidate the refresh token
-                RefreshToken(refresh_token).blacklist()
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+
             return Response(
                 {"message": "Successfully logged out."},
                 status=status.HTTP_205_RESET_CONTENT,

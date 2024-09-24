@@ -7,6 +7,8 @@ from .serializers import ChangePasswordSerializer, LogoutSerializer, RegisterSer
 
 
 class RegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():

@@ -40,3 +40,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context["request"].user
         user.set_password(self.validated_data["new_password"])
         user.save()
+
+
+class LogoutSerializer(serializers.Serializer):
+    pass

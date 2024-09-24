@@ -7,6 +7,8 @@ from .views import (
     ProductListCreateView,
     ProductRetrieveBySlugView,
     ProductRetrieveUpdateDestroyView,
+    ProductReviewListView,
+    ReviewCreateView,
 )
 
 urlpatterns = [
@@ -32,4 +34,10 @@ urlpatterns = [
         ProductRetrieveBySlugView.as_view(),
         name="product-detail-by-slug",
     ),
+    path(
+        "products/<int:product_id>/reviews/",
+        ProductReviewListView.as_view(),
+        name="product_reviews",
+    ),
+    path("reviews/", ReviewCreateView.as_view(), name="create_review"),
 ]

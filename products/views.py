@@ -1,7 +1,8 @@
 from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 
-from .models import Category, Product
-from .serializers import CategorySerializer, ProductSerializer
+from .models import Category, Product, Review
+from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -34,3 +35,19 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = "slug"
+
+
+class ReviewCreateView(generics.CreateAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)  # Set the user from the request
+
+
+class ProductReviewListView(generics.ListAPIView):
+    serializer_class = ReviewSerializer
+
+    def get_queryset(self):
+        product_id = self.kwargs["product_id"]
+        return Review.objects.filter(product_id=product_id)

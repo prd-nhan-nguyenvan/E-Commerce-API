@@ -9,11 +9,13 @@ schema_view = get_schema_view(
         default_version="v1",
         description="API documentation for E-Commerce project",
         terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@ecommerce.local"),
+        contact=openapi.Contact(email="nhan.nguyenvan@paradox.ai"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=[
+        permissions.AllowAny,
+    ],
 )
 urlpatterns = [
     path("auth/", include("authentication.urls")),

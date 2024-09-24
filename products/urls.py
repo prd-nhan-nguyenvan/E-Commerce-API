@@ -4,6 +4,8 @@ from .views import (
     CategoryListCreateView,
     CategoryRetrieveBySlugView,
     CategoryRetrieveUpdateDestroyView,
+    ProductListCreateView,
+    ProductRetrieveUpdateDestroyView,
 )
 
 urlpatterns = [
@@ -17,5 +19,11 @@ urlpatterns = [
         "categories/slug/<slug:slug>/",
         CategoryRetrieveBySlugView.as_view(),
         name="category-detail-by-slug",
+    ),
+    path("products/", ProductListCreateView.as_view(), name="product-list-create"),
+    path(
+        "products/<int:pk>/",
+        ProductRetrieveUpdateDestroyView.as_view(),
+        name="product-detail",
     ),
 ]

@@ -22,11 +22,13 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "drf_yasg",
     "rest_framework",
-    "rest_framework_simplejwt",  # my_app
+    "rest_framework_simplejwt",
+    # my_app
     "users",
     "authentication",
     "orders",
     "products",
+    "carts",
 ]
 
 MIDDLEWARE = [

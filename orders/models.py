@@ -34,5 +34,8 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField()
     price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2)
 
+    class Meta:
+        unique_together = ["order", "product"]
+
     def __str__(self):
         return f"{self.quantity} of {self.product.name} in Order #{self.order.id}"

@@ -39,6 +39,11 @@ class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return (
+                Order.objects.none()
+            )  # Return an empty queryset for schema generation
+
         return self.queryset.filter(user=self.request.user)
 
     @swagger_auto_schema(tags=["Order"])

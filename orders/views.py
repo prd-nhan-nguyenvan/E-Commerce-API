@@ -29,6 +29,55 @@ class OrderListCreateView(generics.ListCreateAPIView):
         return super().post(request, *args, **kwargs)
 
 
+class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)
+
+    @swagger_auto_schema(tags=["Order"])
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Order"])
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Order"])
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Order"])
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        order = self.get_object()
+
+        # Check if the order status is 'pending'
+        if order.status != "pd":
+            return Response(
+                {"detail": "You can only update orders that are pending."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        order = self.get_object()
+
+        # Check if the order status is 'pending'
+        if order.status != "pd":
+            return Response(
+                {"detail": "You can only update orders that are pending."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return super().partial_update(request, *args, **kwargs)
+
+
 class AddOrderItemView(APIView):
     @swagger_auto_schema(tags=["Order"], request_body=AddOrderItemSerializer)
     def post(self, request, order_id, *args, **kwargs):

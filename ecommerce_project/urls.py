@@ -24,6 +24,7 @@ urlpatterns = [
     path("api/products/", include("products.urls")),
     path("api/users/", include("users.urls")),
     path("api/carts/", include("carts.urls")),
+    path("api/orders/", include("orders.urls")),
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),

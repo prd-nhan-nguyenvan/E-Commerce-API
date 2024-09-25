@@ -66,3 +66,17 @@ class AddOrderItemSerializer(serializers.Serializer):
                 f"Only {product_instance.stock} items are available in stock."
             )
         return value
+
+
+class OrderStatusUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["status"]
+
+    def validate_status(self, value):
+        order = self.instance
+        if not order.can_change_status(value):
+            raise serializers.ValidationError(
+                f"Cannot change status from {order.status} to {value}."
+            )
+        return value

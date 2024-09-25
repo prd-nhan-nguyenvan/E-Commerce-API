@@ -6,7 +6,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Order, OrderItem
-from .serializers import AddOrderItemSerializer, OrderSerializer
+from .serializers import (
+    AddOrderItemSerializer,
+    OrderSerializer,
+    OrderStatusUpdateSerializer,
+)
 
 
 class OrderListCreateView(generics.ListCreateAPIView):
@@ -138,3 +142,23 @@ class RemoveFromOrderView(APIView):
             {"detail": "Item removed from order successfully."},
             status=status.HTTP_204_NO_CONTENT,
         )
+
+
+class OrderStatusUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    @swagger_auto_schema(tags=["Order"], request_body=OrderStatusUpdateSerializer)
+    def post(self, request, order_id, *args, **kwargs):
+        order = get_object_or_404(Order, id=order_id, user=request.user)
+        serializer = OrderStatusUpdateSerializer(order, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "Order status updated successfully",
+                    "order": serializer.data,
+                }
+            )
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

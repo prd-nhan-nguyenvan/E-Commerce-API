@@ -20,7 +20,7 @@ schema_view = get_schema_view(
     authentication_classes=[JWTAuthentication],
 )
 urlpatterns = [
-    path("auth/", include("authentication.urls")),
+    path("api/auth/", include("authentication.urls")),
     path("api/products/", include("products.urls")),
     path("api/users/", include("users.urls")),
     path("api/carts/", include("carts.urls")),

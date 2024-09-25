@@ -3,7 +3,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Cart
+from .models import Cart, CartItem
 from .serializers import AddToCartSerializer, CartItemSerializer, CartSerializer
 
 
@@ -38,3 +38,26 @@ class GetCartView(APIView):
 
         serializer = CartSerializer(cart)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class RemoveFromCartView(APIView):
+
+    @swagger_auto_schema(tags=["Cart"])
+    def delete(self, request, product_id, *args, **kwargs):
+        # Retrieve the user's cart item
+        cart_item = CartItem.objects.filter(
+            cart__user=request.user, product_id=product_id
+        ).first()
+
+        if not cart_item:
+            return Response(
+                {"detail": "Item not found in cart."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Remove the item from the cart
+        cart_item.delete()
+
+        return Response(
+            {"detail": "Item removed from cart successfully."},
+            status=status.HTTP_204_NO_CONTENT,
+        )

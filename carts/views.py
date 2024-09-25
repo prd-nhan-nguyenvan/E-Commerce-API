@@ -3,7 +3,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import AddToCartSerializer, CartItemSerializer
+from .models import Cart
+from .serializers import AddToCartSerializer, CartItemSerializer, CartSerializer
 
 
 class AddToCartView(APIView):
@@ -22,3 +23,18 @@ class AddToCartView(APIView):
                 status=status.HTTP_200_OK,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetCartView(APIView):
+    @swagger_auto_schema(tags=["Cart"])
+    def get(self, request, *args, **kwargs):
+        cart = Cart.objects.filter(user=request.user).first()
+
+        if not cart:
+            return Response(
+                {"detail": "Cart is empty or does not exist."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = CartSerializer(cart)
+        return Response(serializer.data, status=status.HTTP_200_OK)

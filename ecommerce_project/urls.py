@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.urls import include, path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
@@ -20,6 +22,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     path("auth/", include("authentication.urls")),
     path("api/products/", include("products.urls")),
+    path("api/users/", include("users.urls")),
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
@@ -27,3 +30,8 @@ urlpatterns = [
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
 ]
+
+
+# Only serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

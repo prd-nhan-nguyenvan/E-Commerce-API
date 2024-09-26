@@ -1,5 +1,5 @@
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics
+from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Category, Product, Review
@@ -9,6 +9,11 @@ from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):
@@ -43,6 +48,7 @@ class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [permissions.AllowAny]
     lookup_field = "slug"
 
     @swagger_auto_schema(tags=["Categories"])
@@ -53,6 +59,11 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
@@ -88,6 +99,7 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     lookup_field = "slug"
+    permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):

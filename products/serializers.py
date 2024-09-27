@@ -6,8 +6,13 @@ from .models import Category, Product, Review
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ["id", "name", "slug"]
-        read_only_fields = ["id"]
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+        ]
+        read_only_fields = ["id", "slug"]
 
 
 class ProductSerializer(serializers.ModelSerializer):

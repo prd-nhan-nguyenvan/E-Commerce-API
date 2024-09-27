@@ -9,6 +9,7 @@ from .serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
     LogoutSerializer,
+    RefreshTokenSerializer,
     RegisterSerializer,
 )
 
@@ -41,6 +42,44 @@ class LoginView(APIView):
                     {"detail": "Invalid credentials."},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomTokenRefreshView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(request_body=RefreshTokenSerializer)
+    def post(self, request):
+        serializer = RefreshTokenSerializer(data=request.data)
+        if serializer.is_valid():
+            refresh_token = serializer.validated_data.get("refresh")
+
+            if not refresh_token:
+                return Response(
+                    {"detail": "Refresh token is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                # Create a RefreshToken instance using the provided refresh token
+                refresh = RefreshToken(refresh_token)
+
+                # Get the new access token from the refresh token
+                new_access_token = refresh.access_token
+
+                return Response(
+                    {
+                        "access": str(new_access_token),
+                        "refresh": str(refresh),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            except Exception:
+                return Response(
+                    {"detail": "Invalid refresh token."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

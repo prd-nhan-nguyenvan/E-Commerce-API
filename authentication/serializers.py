@@ -8,6 +8,10 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
 
+class RefreshTokenSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 

@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 from decouple import config
@@ -130,7 +131,10 @@ REST_FRAMEWORK = {
 
 SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Increase the token lifetime
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Keep refresh token longer
 }
+
 
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
@@ -140,4 +144,5 @@ SWAGGER_SETTINGS = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Your frontend URL
+    "http://localhost:5174",  # Your frontend URL
 ]

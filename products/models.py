@@ -16,6 +16,7 @@ def upload_to(instance, filename):
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
+    description = models.TextField(max_length=1000, blank=True, null=True)
     slug = models.SlugField(unique=True, blank=True)
 
     def save(self, *args, **kwargs):

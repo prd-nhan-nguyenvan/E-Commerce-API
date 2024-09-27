@@ -1,6 +1,17 @@
+import os
+import uuid
+
 from django.conf import settings
 from django.db import models
 from django.utils.text import slugify
+
+
+def upload_to(instance, filename):
+    ext = filename.split(".")[-1]
+
+    new_filename = f"{uuid.uuid4()}.{ext}"
+
+    return os.path.join("products", new_filename)
 
 
 class Category(models.Model):
@@ -27,6 +38,7 @@ class Product(models.Model):
     sell_price = models.DecimalField(max_digits=10, decimal_places=2)
     on_sell = models.BooleanField(default=False)
     stock = models.PositiveIntegerField()
+    image = models.ImageField(upload_to=upload_to, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -1,5 +1,3 @@
-from tokenize import TokenError
-
 from django.contrib.auth import authenticate
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
@@ -71,7 +69,7 @@ class CustomTokenRefreshView(APIView):
                     },
                     status=status.HTTP_200_OK,
                 )
-            except TokenError as e:
+            except Exception as e:
                 return Response(
                     {
                         "detail": str(e)

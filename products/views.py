@@ -93,11 +93,23 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        cache_key = "product_list"
+        cached_product_list = cache.get(cache_key)
+
+        if cached_product_list:
+            print("Serving product list from cache")
+            return Response(cached_product_list)
+
+        print("Serving product list from database")
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response
 
     @swagger_auto_schema(tags=["Products"])
     def post(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        cache.delete("product_list")  # Invalidate the product list cache
+        return response
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):

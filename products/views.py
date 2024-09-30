@@ -1,9 +1,14 @@
+import redis
+from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
+
+redis_instance = redis.StrictRedis(host="127.0.0.1", port=6379, db=1)
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -17,11 +22,22 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        cache_key = "category_list"
+        if cache_key in cache:
+            print("Serving from cache")
+            data = cache.get(cache_key)
+        else:
+            print("Serving from database")
+            response = super().list(request, *args, **kwargs)
+            cache.set(cache_key, response.data, timeout=60 * 60)
+            data = response.data
+        return Response(data)
 
     @swagger_auto_schema(tags=["Categories"])
     def post(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        cache.delete("category_list")  # Invalidate the cache
+        return response
 
 
 class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -52,8 +68,18 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     @swagger_auto_schema(tags=["Categories"])
-    def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    def get(self, request, slug, *args, **kwargs):
+        cache_key = f"category_{slug}"
+        cached_category = cache.get(cache_key)
+
+        if cached_category:
+            print("Serving from cache")
+            return Response(cached_category)
+
+        print("Serving from database")
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response
 
 
 class ProductListCreateView(generics.ListCreateAPIView):
@@ -67,11 +93,23 @@ class ProductListCreateView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        cache_key = "product_list"
+        cached_product_list = cache.get(cache_key)
+
+        if cached_product_list:
+            print("Serving product list from cache")
+            return Response(cached_product_list)
+
+        print("Serving product list from database")
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response
 
     @swagger_auto_schema(tags=["Products"])
     def post(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        cache.delete("product_list")  # Invalidate the product list cache
+        return response
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -98,12 +136,28 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    lookup_field = "slug"
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(tags=["Products"])
-    def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    def get(self, request, slug, *args, **kwargs):
+        if slug is not None:
+            cache_key = "slug" + slug
+        else:
+            cache_key = "slug"
+
+        if cache_key in cache:
+            print("redis")
+            queryset = cache.get(cache_key)
+            return Response(queryset)
+        else:
+            print("db")
+            queryset = Product.objects.all()
+            if slug is not None:
+                queryset = queryset.filter(slug__contains=slug).first()
+                serializer = ProductSerializer(queryset, many=False)
+                cache.set(cache_key, serializer.data, timeout=60 * 60)
+
+                return Response(serializer.data)
 
 
 class ReviewCreateView(generics.CreateAPIView):
@@ -127,4 +181,15 @@ class ProductReviewListView(generics.ListAPIView):
 
     @swagger_auto_schema(tags=["Review"])
     def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
+        product_id = self.kwargs["product_id"]
+        cache_key = f"product_{product_id}_reviews"
+        cached_reviews = cache.get(cache_key)
+
+        if cached_reviews:
+            print("Serving reviews from cache")
+            return Response(cached_reviews)
+
+        print("Serving reviews from database")
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response

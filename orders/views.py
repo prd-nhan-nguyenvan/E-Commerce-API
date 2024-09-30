@@ -23,7 +23,11 @@ class OrderListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        user_orders = self.queryset.filter(user=self.request.user)
+        order_status = self.request.query_params.get("status")
+        if order_status:
+            user_orders = user_orders.filter(status=order_status)
+        return user_orders
 
     @swagger_auto_schema(tags=["Order"])
     def get(self, request, *args, **kwargs):
@@ -48,19 +52,17 @@ class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     @swagger_auto_schema(tags=["Order"])
     def get(self, request, *args, **kwargs):
         order_id = kwargs.get("pk")
-        cache_key = f"order_{order_id}_status"
+        cache_key = f"order_{order_id}_details"
+        cached_order = cache.get(cache_key)
 
-        cached_status = cache.get(cache_key)
-
-        if cached_status:
-            return Response({"status": cached_status}, status=status.HTTP_200_OK)
+        if cached_order:
+            return Response(cached_order, status=status.HTTP_200_OK)
 
         order = self.get_object()
-        order_status = order.status
+        order_data = self.serializer_class(order).data
+        cache.set(cache_key, order_data, timeout=60 * 60)
 
-        cache.set(cache_key, order_status, timeout=60 * 60)  # Cache for 1 hour
-
-        return Response({"status": order_status}, status=status.HTTP_200_OK)
+        return Response(order_data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Order"])
     def put(self, request, *args, **kwargs):

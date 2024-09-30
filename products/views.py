@@ -22,11 +22,22 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        cache_key = "category_list"
+        if cache_key in cache:
+            print("Serving from cache")
+            data = cache.get(cache_key)
+        else:
+            print("Serving from database")
+            response = super().list(request, *args, **kwargs)
+            cache.set(cache_key, response.data, timeout=60 * 60)
+            data = response.data
+        return Response(data)
 
     @swagger_auto_schema(tags=["Categories"])
     def post(self, request, *args, **kwargs):
-        return super().create(request, *args, **kwargs)
+        response = super().create(request, *args, **kwargs)
+        cache.delete("category_list")  # Invalidate the cache
+        return response
 
 
 class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -120,8 +131,8 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
             print("db")
             queryset = Product.objects.all()
             if slug is not None:
-                queryset = queryset.filter(slug__contains=slug)
-                serializer = ProductSerializer(queryset, many=True)
+                queryset = queryset.filter(slug__contains=slug).first()
+                serializer = ProductSerializer(queryset, many=False)
                 cache.set(cache_key, serializer.data, timeout=60 * 60)
 
                 return Response(serializer.data)

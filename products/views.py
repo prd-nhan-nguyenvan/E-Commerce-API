@@ -68,8 +68,18 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     @swagger_auto_schema(tags=["Categories"])
-    def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    def get(self, request, slug, *args, **kwargs):
+        cache_key = f"category_{slug}"
+        cached_category = cache.get(cache_key)
+
+        if cached_category:
+            print("Serving from cache")
+            return Response(cached_category)
+
+        print("Serving from database")
+        response = super().retrieve(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response
 
 
 class ProductListCreateView(generics.ListCreateAPIView):

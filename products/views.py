@@ -181,4 +181,15 @@ class ProductReviewListView(generics.ListAPIView):
 
     @swagger_auto_schema(tags=["Review"])
     def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
+        product_id = self.kwargs["product_id"]
+        cache_key = f"product_{product_id}_reviews"
+        cached_reviews = cache.get(cache_key)
+
+        if cached_reviews:
+            print("Serving reviews from cache")
+            return Response(cached_reviews)
+
+        print("Serving reviews from database")
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response

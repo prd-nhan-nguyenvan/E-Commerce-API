@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.response import Response
@@ -15,12 +16,14 @@ class AddToCartView(APIView):
         )
         if serializer.is_valid():
             cart_item = serializer.save()
+            cache_key = f"user_cart_{request.user.id}"
+            cache.delete(cache_key)
             return Response(
                 {
                     "message": "Item added to cart successfully",
-                    "cart": CartItemSerializer(cart_item).data,
+                    "cart_item": CartItemSerializer(cart_item).data,
                 },
-                status=status.HTTP_200_OK,
+                status=status.HTTP_201_CREATED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -28,7 +31,12 @@ class AddToCartView(APIView):
 class GetCartView(APIView):
     @swagger_auto_schema(tags=["Cart"])
     def get(self, request, *args, **kwargs):
-        cart = Cart.objects.filter(user=request.user).first()
+        cache_key = f"user_cart_{request.user.id}"
+        cart = cache.get(cache_key)
+
+        if cart is None:
+            cart = Cart.objects.filter(user=request.user).first()
+            cache.set(cache_key, cart, timeout=60 * 5)  # Cache for 5 minutes
 
         if not cart:
             return Response(
@@ -41,10 +49,8 @@ class GetCartView(APIView):
 
 
 class RemoveFromCartView(APIView):
-
     @swagger_auto_schema(tags=["Cart"])
     def delete(self, request, product_id, *args, **kwargs):
-        # Retrieve the user's cart item
         cart_item = CartItem.objects.filter(
             cart__user=request.user, product_id=product_id
         ).first()
@@ -54,7 +60,6 @@ class RemoveFromCartView(APIView):
                 {"detail": "Item not found in cart."}, status=status.HTTP_404_NOT_FOUND
             )
 
-        # Remove the item from the cart
         cart_item.delete()
 
         return Response(

@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
@@ -22,7 +23,11 @@ class OrderListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        user_orders = self.queryset.filter(user=self.request.user)
+        order_status = self.request.query_params.get("status")
+        if order_status:
+            user_orders = user_orders.filter(status=order_status)
+        return user_orders
 
     @swagger_auto_schema(tags=["Order"])
     def get(self, request, *args, **kwargs):
@@ -40,15 +45,24 @@ class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
-            return (
-                Order.objects.none()
-            )  # Return an empty queryset for schema generation
+            return Order.objects.none()
 
         return self.queryset.filter(user=self.request.user)
 
     @swagger_auto_schema(tags=["Order"])
     def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+        order_id = kwargs.get("pk")
+        cache_key = f"order_{order_id}_details"
+        cached_order = cache.get(cache_key)
+
+        if cached_order:
+            return Response(cached_order, status=status.HTTP_200_OK)
+
+        order = self.get_object()
+        order_data = self.serializer_class(order).data
+        cache.set(cache_key, order_data, timeout=60 * 60)
+
+        return Response(order_data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Order"])
     def put(self, request, *args, **kwargs):

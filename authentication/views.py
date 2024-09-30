@@ -53,7 +53,6 @@ class CustomTokenRefreshView(APIView):
         serializer = RefreshTokenSerializer(data=request.data)
         if serializer.is_valid():
             refresh_token = serializer.validated_data.get("refresh")
-
             if not refresh_token:
                 return Response(
                     {"detail": "Refresh token is required."},
@@ -61,12 +60,8 @@ class CustomTokenRefreshView(APIView):
                 )
 
             try:
-                # Create a RefreshToken instance using the provided refresh token
                 refresh = RefreshToken(refresh_token)
-
-                # Get the new access token from the refresh token
                 new_access_token = refresh.access_token
-
                 return Response(
                     {
                         "access": str(new_access_token),
@@ -74,9 +69,11 @@ class CustomTokenRefreshView(APIView):
                     },
                     status=status.HTTP_200_OK,
                 )
-            except Exception:
+            except Exception as e:
                 return Response(
-                    {"detail": "Invalid refresh token."},
+                    {
+                        "detail": str(e)
+                    },  # This will provide the specific error from the token library
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

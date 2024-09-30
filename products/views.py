@@ -1,9 +1,14 @@
+import redis
+from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
+
+redis_instance = redis.StrictRedis(host="127.0.0.1", port=6379, db=1)
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -98,12 +103,28 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    lookup_field = "slug"
     permission_classes = [permissions.AllowAny]
 
     @swagger_auto_schema(tags=["Products"])
-    def get(self, request, *args, **kwargs):
-        return super().retrieve(request, *args, **kwargs)
+    def get(self, request, slug, *args, **kwargs):
+        if slug is not None:
+            cache_key = "slug" + slug
+        else:
+            cache_key = "slug"
+
+        if cache_key in cache:
+            print("redis")
+            queryset = cache.get(cache_key)
+            return Response(queryset)
+        else:
+            print("db")
+            queryset = Product.objects.all()
+            if slug is not None:
+                queryset = queryset.filter(slug__contains=slug)
+                serializer = ProductSerializer(queryset, many=True)
+                cache.set(cache_key, serializer.data, timeout=60 * 60)
+
+                return Response(serializer.data)
 
 
 class ReviewCreateView(generics.CreateAPIView):

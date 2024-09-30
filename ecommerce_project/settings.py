@@ -146,3 +146,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Your frontend URL
     "http://localhost:5174",  # Your frontend URL
 ]
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # Local Link provided by the redis-server command
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+    }
+}

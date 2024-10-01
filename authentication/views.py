@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .constants import ROLE_STAFF
+from .permissions import IsAdmin
 from .serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
@@ -83,12 +85,32 @@ class CustomTokenRefreshView(APIView):
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(request_body=RegisterSerializer)
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(
                 {"message": "User created successfully"}, status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateStaffView(APIView):
+    permission_classes = [IsAdmin]
+
+    @swagger_auto_schema(request_body=RegisterSerializer)
+    def post(self, request):
+        request.data["role"] = ROLE_STAFF
+        serializer = RegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "Staff account created successfully.",
+                    "user": serializer.data,
+                },
+                status=status.HTTP_201_CREATED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

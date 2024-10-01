@@ -1,7 +1,8 @@
 import redis
 from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -85,6 +86,7 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_permissions(self):
         if self.request.method == "GET":
@@ -109,12 +111,13 @@ class ProductListCreateView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         cache.delete("product_list")  # Invalidate the product list cache
-        return response
+        return Response(response.data, status=status.HTTP_201_CREATED)
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
+    parser_classes = [MultiPartParser, FormParser]
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
@@ -122,15 +125,38 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
     @swagger_auto_schema(tags=["Products"])
     def put(self, request, *args, **kwargs):
-        return super().update(request, *args, **kwargs)
+        product = self.get_object()
+        data = request.data
+        if "price" in data and float(data["price"]) < 0:
+            return Response(
+                {"error": "Price cannot be negative."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if "sell_price" in data and float(data["sell_price"]) > float(
+            data.get("price", product.price)
+        ):
+            return Response(
+                {"error": "Sell price cannot be greater than the regular price."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        response = super().update(request, *args, **kwargs)
+        cache.delete("product_list")
+
+        return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def patch(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        response = super().partial_update(request, *args, **kwargs)
+        cache.delete("product_list")
+        return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def delete(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
+        super().destroy(request, *args, **kwargs)
+        cache.delete("product_list")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):

@@ -116,7 +116,6 @@ STATIC_URL = "static/"
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media/"
 
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -127,6 +126,9 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "PAGE_SIZE": 10,
+    "DEFAULT_LIMIT": 10,
+    "DEFAULT_OFFSET": 0,
 }
 
 SIMPLE_JWT = {
@@ -134,7 +136,6 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Increase the token lifetime
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Keep refresh token longer
 }
-
 
 SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {

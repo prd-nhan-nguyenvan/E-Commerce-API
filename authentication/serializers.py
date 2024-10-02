@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .constants import ROLE_USER
 from .models import CustomUser
 
 
@@ -17,13 +18,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ["username", "email", "password"]
+        fields = ["username", "email", "password", "role"]
 
     def create(self, validated_data):
+        role = validated_data.get("role", ROLE_USER)
+
         user = CustomUser.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
+            role=role,
         )
         return user
 

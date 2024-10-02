@@ -209,7 +209,7 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
             queryset = Product.objects.all()
             if slug is not None:
                 queryset = queryset.filter(slug__contains=slug).first()
-                serializer = ProductSerializer(queryset, many=False)
+                serializer = self.get_serializer(queryset)
                 cache.set(cache_key, serializer.data, timeout=60 * 60)
 
                 return Response(serializer.data)

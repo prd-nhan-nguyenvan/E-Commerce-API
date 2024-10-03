@@ -3,8 +3,8 @@ from django.conf.urls.static import static
 from django.urls import include, path
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
+from oauth2_provider import urls as oauth2_urls
 from rest_framework import permissions
-from rest_framework_simplejwt.authentication import JWTAuthentication
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -17,9 +17,9 @@ schema_view = get_schema_view(
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
-    authentication_classes=[JWTAuthentication],
 )
 urlpatterns = [
+    path("o/", include(oauth2_urls)),
     path("api/auth/", include("authentication.urls")),
     path("api/products/", include("products.urls")),
     path("api/users/", include("users.urls")),

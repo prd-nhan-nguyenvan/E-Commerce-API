@@ -1,50 +1,58 @@
+import logging
+
+import requests
+from django.conf import settings
 from django.contrib.auth import authenticate
 from drf_yasg.utils import swagger_auto_schema
+from oauth2_provider.models import AccessToken, RefreshToken
 from rest_framework import generics, permissions, status
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from .constants import ROLE_STAFF
 from .permissions import IsAdmin
 from .serializers import (
     ChangePasswordSerializer,
-    LoginSerializer,
-    LogoutSerializer,
     RefreshTokenSerializer,
     RegisterSerializer,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class LoginView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
 
-    @swagger_auto_schema(request_body=LoginSerializer)
     def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            email = serializer.validated_data.get("email")
-            password = serializer.validated_data.get("password")
+        email = request.data.get("email")
+        password = request.data.get("password")
 
-            user = authenticate(request, email=email, password=password)
+        # Authenticate the user
+        user = authenticate(email=email, password=password)
+        if not user:
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
-            if user is not None:
-                refresh = RefreshToken.for_user(user)
-                access_token = refresh.access_token
+        # Prepare the token request
+        token_url = "http://localhost:8000/o/token/"
+        data = {
+            "grant_type": "password",
+            "username": email,
+            "password": password,
+            "client_id": settings.OAUTH2_CLIENT_ID,
+            "client_secret": settings.OAUTH2_CLIENT_SECRET,
+        }
 
-                return Response(
-                    {
-                        "refresh": str(refresh),
-                        "access": str(access_token),
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(
-                    {"detail": "Invalid credentials."},
-                    status=status.HTTP_401_UNAUTHORIZED,
-                )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Make the request for a token
+        response = requests.post(token_url, data=data)
+        if response.status_code != 200:
+            return Response(
+                {"error": "Failed to get token"}, status=response.status_code
+            )
+
+        return Response(response.json())
 
 
 class CustomTokenRefreshView(APIView):
@@ -133,17 +141,16 @@ class ChangePasswordView(generics.UpdateAPIView):
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = LogoutSerializer  # Adding this for schema generation
 
     def post(self, request):
         try:
-            refresh_token = request.data["refresh"]
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-
+            token = AccessToken.objects.get(token=request.auth)
+            token.revoke()  # Revoke the access token
             return Response(
                 {"message": "Successfully logged out."},
                 status=status.HTTP_205_RESET_CONTENT,
             )
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except AccessToken.DoesNotExist:
+            return Response(
+                {"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST
+            )

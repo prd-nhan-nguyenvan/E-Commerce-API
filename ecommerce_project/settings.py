@@ -1,4 +1,3 @@
-from datetime import timedelta
 from pathlib import Path
 
 from decouple import config
@@ -23,8 +22,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "drf_yasg",
     "rest_framework",
-    "rest_framework_simplejwt",
+    "rest_framework.authtoken",
     "corsheaders",
+    "oauth2_provider",
     # my_app
     "users",
     "authentication",
@@ -123,7 +123,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",  # OAuth2 authentication
+        "rest_framework.authentication.SessionAuthentication",  # Optional for browsable API login
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "PAGE_SIZE": 10,
@@ -131,16 +132,28 @@ REST_FRAMEWORK = {
     "DEFAULT_OFFSET": 0,
 }
 
-SIMPLE_JWT = {
-    "BLACKLIST_AFTER_ROTATION": True,
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Increase the token lifetime
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Keep refresh token longer
+AUTHENTICATION_BACKENDS = (
+    "django.contrib.auth.backends.ModelBackend",
+    "oauth2_provider.backends.OAuth2Backend",
+)
+OAUTH2_PROVIDER = {
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 36000,
+    "AUTHORIZATION_CODE_EXPIRE_SECONDS": 600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": None,
 }
 
+OAUTH2_CLIENT_ID = "vsvNTdlfvMJ3hCrWxXO19HCiHpQrjddhaSq3OwKt"
+OAUTH2_CLIENT_SECRET = "JB0UcbCfgYokW3JlJpagDUEhc2mwennou9jtSbR3vM3JOCx1IVKSB6Qx0uyNHvAsiE4v1oXlMRYD5903P2JnKcD4jDeiNPMxYuwTuShzRBS9RFEpE4iugAG1II0UlkAn"
+
 SWAGGER_SETTINGS = {
+    "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
-        "DRF Token": {"type": "apiKey", "name": "Authorization", "in": "header"}
-    }
+        "oauth2": {
+            "type": "oauth2",
+            "tokenUrl": "/o/token/",
+            "flow": "password",
+        }
+    },
 }
 
 CORS_ALLOWED_ORIGINS = [

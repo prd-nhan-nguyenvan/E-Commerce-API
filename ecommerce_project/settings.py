@@ -69,11 +69,11 @@ WSGI_APPLICATION = "ecommerce_project.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": config("DB_NAME"),
-        "USER": config("DB_USER"),
-        "PASSWORD": config("DB_PASSWORD"),
-        "HOST": config("DB_HOST", "localhost"),
-        "PORT": config("DB_PORT", 3306),
+        "NAME": config("MYSQL_DATABASE"),
+        "USER": config("MYSQL_USER"),
+        "PASSWORD": config("MYSQL_PASSWORD"),
+        "HOST": config("MYSQL_HOST", "localhost"),
+        "PORT": config("MYSQL_PORT", 3306),
     }
 }
 
@@ -142,8 +142,8 @@ OAUTH2_PROVIDER = {
     "REFRESH_TOKEN_EXPIRE_SECONDS": None,
 }
 
-OAUTH2_CLIENT_ID = "vsvNTdlfvMJ3hCrWxXO19HCiHpQrjddhaSq3OwKt"
-OAUTH2_CLIENT_SECRET = "JB0UcbCfgYokW3JlJpagDUEhc2mwennou9jtSbR3vM3JOCx1IVKSB6Qx0uyNHvAsiE4v1oXlMRYD5903P2JnKcD4jDeiNPMxYuwTuShzRBS9RFEpE4iugAG1II0UlkAn"
+OAUTH2_CLIENT_ID = config("OAUTH2_CLIENT_ID")
+OAUTH2_CLIENT_SECRET = config("OAUTH2_CLIENT_SECRET")
 
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
@@ -164,7 +164,9 @@ CORS_ALLOWED_ORIGINS = [
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://172.17.0.2:6379/1",  # Local Link provided by the redis-server command
+        "LOCATION": config(
+            "REDIS_URL"
+        ),  # Local Link provided by the redis-server command
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },

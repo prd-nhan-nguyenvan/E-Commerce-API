@@ -1,58 +1,73 @@
-import logging
+from datetime import timedelta
 
-import requests
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.utils.timezone import now
 from drf_yasg.utils import swagger_auto_schema
-from oauth2_provider.models import AccessToken, RefreshToken
+from oauth2_provider.models import AccessToken, Application, RefreshToken
 from rest_framework import generics, permissions, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .constants import ROLE_STAFF
+from .helper import custom_token_generator
 from .permissions import IsAdmin
 from .serializers import (
     ChangePasswordSerializer,
+    LoginSerializer,
     RefreshTokenSerializer,
     RegisterSerializer,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
+    @swagger_auto_schema(request_body=LoginSerializer)
     def post(self, request):
-        email = request.data.get("email")
-        password = request.data.get("password")
+        serializer = LoginSerializer(data=request.data)
 
-        # Authenticate the user
-        user = authenticate(email=email, password=password)
-        if not user:
-            return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+        if serializer.is_valid():
+            email = serializer.validated_data.get("email")
+            password = serializer.validated_data.get("password")
+
+            # Authenticate the user
+            user = authenticate(email=email, password=password)
+            if not user:
+                return Response(
+                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            application = Application.objects.get(client_id=settings.OAUTH2_CLIENT_ID)
+            expires = now() + timedelta(
+                seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
+            )
+            access_token = AccessToken.objects.create(
+                user=user,
+                application=application,
+                token=custom_token_generator(),
+                expires=expires,
+                scope="read write",
+            )
+            refresh_token = RefreshToken.objects.create(
+                user=user,
+                token=custom_token_generator(),  # Automatically generate the refresh token
+                access_token=access_token,
+                application=application,
             )
 
-        # Prepare the token request
-        token_url = "http://localhost:8000/o/token/"
-        data = {
-            "grant_type": "password",
-            "username": email,
-            "password": password,
-            "client_id": settings.OAUTH2_CLIENT_ID,
-            "client_secret": settings.OAUTH2_CLIENT_SECRET,
-        }
+            response_data = {
+                "access_token": access_token.token,
+                "expires_in": settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"],
+                "token_type": "Bearer",
+                "scope": "read write",
+                "refresh_token": refresh_token.token,
+            }
 
-        # Make the request for a token
-        response = requests.post(token_url, data=data)
-        if response.status_code != 200:
-            return Response(
-                {"error": "Failed to get token"}, status=response.status_code
-            )
+            return Response(data=response_data, status=status.HTTP_201_CREATED)
 
-        return Response(response.json())
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CustomTokenRefreshView(APIView):
@@ -61,29 +76,53 @@ class CustomTokenRefreshView(APIView):
     @swagger_auto_schema(request_body=RefreshTokenSerializer)
     def post(self, request):
         serializer = RefreshTokenSerializer(data=request.data)
+
         if serializer.is_valid():
-            refresh_token = serializer.validated_data.get("refresh")
-            if not refresh_token:
+            refresh_token_value = serializer.validated_data.get("refresh")
+            if not refresh_token_value:
                 return Response(
                     {"detail": "Refresh token is required."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             try:
-                refresh = RefreshToken(refresh_token)
-                new_access_token = refresh.access_token
+                # Fetch the RefreshToken instance
+                refresh_token = RefreshToken.objects.get(token=refresh_token_value)
+
+                expires = now() + timedelta(
+                    seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
+                )
+                new_access_token = AccessToken.objects.create(
+                    user=refresh_token.user,
+                    application=refresh_token.application,
+                    token=custom_token_generator(),
+                    expires=expires,
+                    scope=refresh_token.access_token.scope,
+                )
+
+                response_data = {
+                    "access_token": new_access_token.token,
+                    "expires_in": settings.OAUTH2_PROVIDER[
+                        "ACCESS_TOKEN_EXPIRE_SECONDS"
+                    ],
+                    "token_type": "Bearer",
+                    "scope": "read write",
+                    "refresh_token": refresh_token.token,
+                }
+
                 return Response(
-                    {
-                        "access": str(new_access_token),
-                        "refresh": str(refresh),
-                    },
+                    response_data,
                     status=status.HTTP_200_OK,
+                )
+
+            except RefreshToken.DoesNotExist:
+                return Response(
+                    {"detail": "Invalid refresh token."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             except Exception as e:
                 return Response(
-                    {
-                        "detail": str(e)
-                    },  # This will provide the specific error from the token library
+                    {"detail": str(e)},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

@@ -18,6 +18,7 @@ redis_instance = redis.StrictRedis(host="127.0.0.1", port=6379, db=1)
 class CategoryListCreateView(generics.ListCreateAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    pagination_class = None
 
     def get_permissions(self):
         if self.request.method == "GET":

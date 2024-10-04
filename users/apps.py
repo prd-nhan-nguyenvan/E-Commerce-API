@@ -6,6 +6,4 @@ class UsersConfig(AppConfig):
     name = "users"
 
     def ready(self):
-        import users.signals  # ruff: noqa: F401
-
-        print(users.signals)
+        from . import signals  # noqa: F401

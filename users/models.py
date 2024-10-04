@@ -24,6 +24,3 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.email}'s Profile"
-
-
-# Create your models here.

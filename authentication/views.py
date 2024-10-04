@@ -1,4 +1,3 @@
-import logging
 from datetime import timedelta
 
 from django.conf import settings
@@ -20,8 +19,6 @@ from .serializers import (
     RefreshTokenSerializer,
     RegisterSerializer,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class LoginView(APIView):

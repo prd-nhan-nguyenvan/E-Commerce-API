@@ -89,6 +89,12 @@ class CustomTokenRefreshView(APIView):
 
                 refresh_token = RefreshToken.objects.get(token=refresh_token_value)
 
+                if not refresh_token.access_token:
+                    return Response(
+                        {"detail": "Invalid refresh token."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
                 expires = now() + timedelta(
                     seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
                 )

@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    env_file:
+      - .env_docker
+    ports:
+      - '3306:3306'
+    expose:
+      - '3306'
+    volumes:
+      - my-db:/var/lib/mysql
+  redis:
+    image: redis:6.0
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  my-db:
+networks:
+  app-network:

@@ -1,4 +1,3 @@
-from datetime import timedelta
 from pathlib import Path
 
 from decouple import config
@@ -23,8 +22,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "drf_yasg",
     "rest_framework",
-    "rest_framework_simplejwt",
+    "rest_framework.authtoken",
     "corsheaders",
+    "oauth2_provider",
     # my_app
     "users",
     "authentication",
@@ -69,11 +69,11 @@ WSGI_APPLICATION = "ecommerce_project.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": config("DB_NAME"),
-        "USER": config("DB_USER"),
-        "PASSWORD": config("DB_PASSWORD"),
-        "HOST": config("DB_HOST", "localhost"),
-        "PORT": config("DB_PORT", 3306),
+        "NAME": config("MYSQL_DATABASE"),
+        "USER": config("MYSQL_USER"),
+        "PASSWORD": config("MYSQL_PASSWORD"),
+        "HOST": config("MYSQL_HOST", "localhost"),
+        "PORT": config("MYSQL_PORT", 3306),
     }
 }
 
@@ -123,7 +123,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",  # OAuth2 authentication
+        "rest_framework.authentication.SessionAuthentication",  # Optional for browsable API login
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "PAGE_SIZE": 10,
@@ -131,16 +132,28 @@ REST_FRAMEWORK = {
     "DEFAULT_OFFSET": 0,
 }
 
-SIMPLE_JWT = {
-    "BLACKLIST_AFTER_ROTATION": True,
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Increase the token lifetime
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),  # Keep refresh token longer
+AUTHENTICATION_BACKENDS = (
+    "django.contrib.auth.backends.ModelBackend",
+    "oauth2_provider.backends.OAuth2Backend",
+)
+OAUTH2_PROVIDER = {
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 36000,
+    "AUTHORIZATION_CODE_EXPIRE_SECONDS": 600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": None,
 }
 
+OAUTH2_CLIENT_ID = config("OAUTH2_CLIENT_ID")
+OAUTH2_CLIENT_SECRET = config("OAUTH2_CLIENT_SECRET")
+
 SWAGGER_SETTINGS = {
+    "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
-        "DRF Token": {"type": "apiKey", "name": "Authorization", "in": "header"}
-    }
+        "oauth2": {
+            "type": "oauth2",
+            "tokenUrl": "/o/token/",
+            "flow": "password",
+        }
+    },
 }
 
 CORS_ALLOWED_ORIGINS = [
@@ -151,7 +164,9 @@ CORS_ALLOWED_ORIGINS = [
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",  # Local Link provided by the redis-server command
+        "LOCATION": config(
+            "REDIS_URL"
+        ),  # Local Link provided by the redis-server command
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },

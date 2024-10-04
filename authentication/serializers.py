@@ -19,6 +19,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["username", "email", "password", "role"]
+        read_only_fields = ["role"]
 
     def create(self, validated_data):
         role = validated_data.get("role", ROLE_USER)

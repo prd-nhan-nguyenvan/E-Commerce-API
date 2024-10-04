@@ -149,10 +149,10 @@ OAUTH2_CLIENT_SECRET = config("OAUTH2_CLIENT_SECRET")
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
-        "oauth2": {
-            "type": "oauth2",
-            "tokenUrl": "/o/token/",
-            "flow": "password",
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
         }
     },
 }

@@ -12,9 +12,9 @@ from .views import (
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
     path(
-        "register-staff-account/",
+        "register/staff/",
         CreateStaffView.as_view(),
-        name="create_staff_account",
+        name="register_staff",
     ),
     path("login/", LoginView.as_view(), name="token_obtain_pair"),
     path("token/refresh/", CustomTokenRefreshView.as_view(), name="token_refresh"),

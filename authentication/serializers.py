@@ -21,14 +21,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ["username", "email", "password", "role"]
         read_only_fields = ["role"]
 
-    def create(self, validated_data):
-        role = validated_data.get("role", ROLE_USER)
+    def __init__(self, *args, **kwargs):
+        self.role = kwargs.pop("role", ROLE_USER)
+        super().__init__(*args, **kwargs)
 
+    def create(self, validated_data):
+        validated_data["role"] = self.role
         user = CustomUser.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
-            role=role,
+            role=validated_data["role"],
         )
         return user
 
@@ -44,7 +47,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
     def validate_new_password(self, value):
-        if len(value) < 8:  # Example validation for password length
+        if len(value) < 8:
             raise serializers.ValidationError(
                 "New password must be at least 8 characters long"
             )

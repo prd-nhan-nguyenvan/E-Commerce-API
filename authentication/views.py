@@ -11,10 +11,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .constants import ROLE_STAFF, ROLE_USER
-from .helper import custom_token_generator
-from .permissions import IsAdmin
-from .serializers import (
+from authentication.constants import ROLE_STAFF, ROLE_USER
+from authentication.helper import custom_token_generator
+from authentication.permissions import IsAdmin
+from authentication.serializers import (
     ChangePasswordSerializer,
     LoginSerializer,
     RefreshTokenSerializer,
@@ -177,18 +177,28 @@ class ChangePasswordView(generics.UpdateAPIView):
         )
 
 
-class LogoutView(generics.GenericAPIView):
+class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         try:
-            token = AccessToken.objects.get(token=request.auth)
-            token.revoke()
+            token = request.auth.token
+            access_token = AccessToken.objects.get(token=token)
+            refresh_token = RefreshToken.objects.filter(
+                access_token=access_token
+            ).first()
+
+            if refresh_token:
+                refresh_token.revoke()
+
+            access_token.delete()
+
             return Response(
-                {"message": "Successfully logged out."},
-                status=status.HTTP_205_RESET_CONTENT,
+                {"message": "Successfully logged out"}, status=status.HTTP_200_OK
             )
         except AccessToken.DoesNotExist:
             return Response(
-                {"error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invalid access token"}, status=status.HTTP_400_BAD_REQUEST
             )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

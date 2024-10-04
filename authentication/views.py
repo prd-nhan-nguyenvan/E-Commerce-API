@@ -79,29 +79,53 @@ class CustomTokenRefreshView(APIView):
     @swagger_auto_schema(request_body=RefreshTokenSerializer)
     def post(self, request):
         serializer = RefreshTokenSerializer(data=request.data)
+
         if serializer.is_valid():
-            refresh_token = serializer.validated_data.get("refresh")
-            if not refresh_token:
+            refresh_token_value = serializer.validated_data.get("refresh")
+            if not refresh_token_value:
                 return Response(
                     {"detail": "Refresh token is required."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
             try:
-                refresh = RefreshToken(refresh_token)
-                new_access_token = refresh.access_token
+                # Fetch the RefreshToken instance
+                refresh_token = RefreshToken.objects.get(token=refresh_token_value)
+
+                expires = now() + timedelta(
+                    seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
+                )
+                new_access_token = AccessToken.objects.create(
+                    user=refresh_token.user,
+                    application=refresh_token.application,
+                    token=custom_token_generator(),
+                    expires=expires,
+                    scope=refresh_token.access_token.scope,
+                )
+
+                response_data = {
+                    "access_token": new_access_token.token,
+                    "expires_in": settings.OAUTH2_PROVIDER[
+                        "ACCESS_TOKEN_EXPIRE_SECONDS"
+                    ],
+                    "token_type": "Bearer",
+                    "scope": "read write",
+                    "refresh_token": refresh_token.token,
+                }
+
                 return Response(
-                    {
-                        "access": str(new_access_token),
-                        "refresh": str(refresh),
-                    },
+                    response_data,
                     status=status.HTTP_200_OK,
+                )
+
+            except RefreshToken.DoesNotExist:
+                return Response(
+                    {"detail": "Invalid refresh token."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             except Exception as e:
                 return Response(
-                    {
-                        "detail": str(e)
-                    },  # This will provide the specific error from the token library
+                    {"detail": str(e)},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 

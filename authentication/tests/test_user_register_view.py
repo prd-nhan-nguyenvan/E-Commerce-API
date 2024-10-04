@@ -43,18 +43,17 @@ class RegisterViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email", response.data)
 
-    # TODO:  HANDLE THIS FEATURE TO CHECK THE STRONG PASSWORD
-    # def test_register_user_short_password(self):
-    #     pass
-    #     data = {
-    #         "username": "testuser",
-    #         "email": "valid.email@example.com",
-    #         "password": "123",
-    #     }
-    #     response = self.client.post(self.url, data, format="json")
-    #
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    #     self.assertIn("password", response.data)
+    def test_register_user_short_password(self):
+        pass
+        data = {
+            "username": "testuser",
+            "email": "valid.email@example.com",
+            "password": "123",
+        }
+        response = self.client.post(self.url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)
 
     def tearDown(self):
         User.objects.all().delete()

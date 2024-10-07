@@ -28,7 +28,7 @@ class CreateStaffViewTest(APITestCase):
         data = {
             "username": "staffuser",
             "email": "staff@example.com",
-            "password": "password123",
+            "password": "Staff@123",
         }
 
         response = self.client.post(self.url, data, format="json")
@@ -42,6 +42,19 @@ class CreateStaffViewTest(APITestCase):
         # Verify that the user is created with the ROLE_STAFF role
         user = User.objects.get(username="staffuser")
         self.assertEqual(user.role, ROLE_STAFF)
+
+    def test_pass_is_too_common(self):
+        # Test data for valid staff registration
+        data = {
+            "username": "staffuser",
+            "email": "staff@example.com",
+            "password": "password123",
+        }
+
+        response = self.client.post(self.url, data, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("password", response.data)  # Che
 
     def test_password_too_short(self):
         # Invalid data (missing email, invalid password)

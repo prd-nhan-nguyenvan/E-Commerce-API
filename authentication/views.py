@@ -174,13 +174,19 @@ class ChangePasswordView(generics.UpdateAPIView):
     def get_object(self):
         return self.request.user
 
-    def put(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         serializer.save()
+
         return Response(
             {"message": "Password updated successfully"}, status=status.HTTP_200_OK
         )
+
+    @swagger_auto_schema(request_body=ChangePasswordSerializer)
+    def patch(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
 
 class LogoutView(APIView):

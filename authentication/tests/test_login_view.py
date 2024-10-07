@@ -28,16 +28,12 @@ class LoginViewTestCase(APITestCase):
     @patch("django.contrib.auth.authenticate")
     @patch("authentication.helper.custom_token_generator")
     def test_successful_login(self, mock_custom_token_generator, mock_authenticate):
-
         mock_authenticate.return_value = self.user
 
-        # Data for the login request
         data = {"email": "testuser@example.com", "password": "testpassword"}
 
-        # Make the request
         response = self.client.post(self.url, data, format="json")
 
-        # Assertions
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("access_token", response.data)
         self.assertIn("refresh_token", response.data)
@@ -52,7 +48,6 @@ class LoginViewTestCase(APITestCase):
 
     @patch("django.contrib.auth.authenticate")
     def test_login_invalid_credentials(self, mock_authenticate):
-
         mock_authenticate.return_value = None
         data = {"email": "invaliduser@example.com", "password": "invalidpassword"}
         response = self.client.post(self.url, data, format="json")
@@ -75,6 +70,10 @@ class LoginViewTestCase(APITestCase):
         data = {"email": "invalid_email_format", "password": "testpassword"}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn(
-            "email", response.data
-        )  # Assuming your serializer handles this validation
+        self.assertIn("email", response.data)
+
+    def tearDown(self):
+        User.objects.all().delete()
+        Application.objects.all().delete()
+        AccessToken.objects.all().delete()
+        RefreshToken.objects.all().delete()

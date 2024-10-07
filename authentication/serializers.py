@@ -16,7 +16,7 @@ class RefreshTokenSerializer(serializers.Serializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, validators=[validate_password])
 
     class Meta:
         model = CustomUser
@@ -36,13 +36,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             role=validated_data["role"],
         )
         return user
-
-    def validate_password(self, value):
-        if len(value) < 8:
-            raise serializers.ValidationError(
-                "Password must be at least 8 characters long"
-            )
-        return value
 
 
 class ChangePasswordSerializer(serializers.Serializer):

@@ -1,10 +1,13 @@
+from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 
+from authentication.permissions import IsAdmin
+
 from .models import UserProfile
-from .serializers import UserProfileSerializer
+from .serializers import UserListSerializer, UserProfileSerializer
 
 
 class ProfileRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -34,3 +37,9 @@ class ProfileRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if "user" in data or "role" in data:
             raise ValidationError("You cannot update read-only fields.")
         return data
+
+
+class UserListView(generics.ListAPIView):
+    queryset = get_user_model().objects.all()
+    serializer_class = UserListSerializer
+    permission_classes = [IsAdmin]

@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import UserProfile
@@ -30,3 +31,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         validated_data.pop("role", None)
 
         return super().update(instance, validated_data)
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "email", "username", "role", "is_active", "date_joined"]

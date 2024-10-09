@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
 from django.utils.timezone import now
 from drf_yasg.utils import swagger_auto_schema
 from oauth2_provider.models import AccessToken, Application, RefreshToken
@@ -42,6 +42,8 @@ class LoginView(APIView):
                 return Response(
                     {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
                 )
+
+            login(request, user)
 
             application = Application.objects.get(client_id=settings.OAUTH2_CLIENT_ID)
             expires = now() + timedelta(

@@ -1,5 +1,6 @@
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 
 from .models import UserProfile
@@ -21,10 +22,15 @@ class ProfileRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
     @swagger_auto_schema(tags=["User"])
     def put(self, request, *args, **kwargs):
-        # For a full update, ensure the user field remains unchanged
+        self.validate_update_fields(request.data)
         return self.partial_update(request, *args, **kwargs)
 
     @swagger_auto_schema(tags=["User"])
     def patch(self, request, *args, **kwargs):
-        # Ensure user cannot update the `user` field directly
+        self.validate_update_fields(request.data)
         return super().partial_update(request, *args, **kwargs)
+
+    def validate_update_fields(self, data):
+        if "user" in data or "role" in data:
+            raise ValidationError("You cannot update read-only fields.")
+        return data

@@ -5,6 +5,8 @@ from .models import UserProfile
 
 class UserProfileSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source="user.role", read_only=True)
+    email = serializers.EmailField(source="user.email", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
 
     class Meta:
         model = UserProfile
@@ -12,6 +14,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "role",
+            "email",
+            "username",
             "first_name",
             "last_name",
             "bio",

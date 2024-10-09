@@ -1,13 +1,14 @@
 from django.contrib.auth import get_user_model
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.response import Response
 
 from authentication.permissions import IsAdmin
 
 from .models import UserProfile
-from .serializers import UserListSerializer, UserProfileSerializer
+from .serializers import UserDetailSerializer, UserListSerializer, UserProfileSerializer
 
 
 class ProfileRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -43,3 +44,29 @@ class UserListView(generics.ListAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserListSerializer
     permission_classes = [IsAdmin]
+
+
+class UserDetailView(generics.RetrieveUpdateAPIView):
+    queryset = get_user_model().objects.all()
+    serializer_class = UserDetailSerializer
+    permission_classes = [IsAdmin]  # Only admin users can access this view
+
+    def patch(self, request, *args, **kwargs):
+        user = self.get_object()
+        action = request.data.get("action")
+
+        if action == "block":
+            user.is_active = False
+            user.save()
+            return Response(
+                {"detail": "User blocked successfully."}, status=status.HTTP_200_OK
+            )
+
+        elif action == "unblock":
+            user.is_active = True
+            user.save()
+            return Response(
+                {"detail": "User unblocked successfully."}, status=status.HTTP_200_OK
+            )
+
+        return super().patch(request, *args, **kwargs)

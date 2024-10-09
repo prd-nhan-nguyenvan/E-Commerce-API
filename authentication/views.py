@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
 from django.utils.timezone import now
 from drf_yasg.utils import swagger_auto_schema
 from oauth2_provider.models import AccessToken, Application, RefreshToken
@@ -16,6 +16,7 @@ from authentication.helper import custom_token_generator
 from authentication.permissions import IsAdmin
 from authentication.serializers import (
     ChangePasswordSerializer,
+    LoginResponseSerializer,
     LoginSerializer,
     RefreshTokenSerializer,
     RegisterSerializer,
@@ -25,7 +26,10 @@ from authentication.serializers import (
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
-    @swagger_auto_schema(request_body=LoginSerializer)
+    @swagger_auto_schema(
+        request_body=LoginSerializer,
+        responses={201: LoginResponseSerializer, 400: "Invalid credentials"},
+    )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
 
@@ -38,6 +42,8 @@ class LoginView(APIView):
                 return Response(
                     {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
                 )
+
+            login(request, user)
 
             application = Application.objects.get(client_id=settings.OAUTH2_CLIENT_ID)
             expires = now() + timedelta(
@@ -57,15 +63,24 @@ class LoginView(APIView):
                 application=application,
             )
 
-            response_data = {
-                "access_token": access_token.token,
-                "expires_in": settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"],
-                "token_type": "Bearer",
-                "scope": "read write",
-                "refresh_token": refresh_token.token,
-            }
+            response_data = LoginResponseSerializer(
+                data={
+                    "access_token": access_token.token,
+                    "expires_in": settings.OAUTH2_PROVIDER[
+                        "ACCESS_TOKEN_EXPIRE_SECONDS"
+                    ],
+                    "token_type": "Bearer",
+                    "scope": "read write",
+                    "refresh_token": refresh_token.token,
+                }
+            )
 
-            return Response(data=response_data, status=status.HTTP_201_CREATED)
+            if response_data.is_valid():
+                return Response(data=response_data.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(
+                    response_data.errors, status=status.HTTP_400_BAD_REQUEST
+                )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

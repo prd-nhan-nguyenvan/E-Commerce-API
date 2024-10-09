@@ -11,6 +11,14 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
 
+class LoginResponseSerializer(serializers.Serializer):
+    access_token = serializers.CharField()
+    expires_in = serializers.IntegerField()
+    token_type = serializers.CharField()
+    scope = serializers.CharField()
+    refresh_token = serializers.CharField()
+
+
 class RefreshTokenSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 

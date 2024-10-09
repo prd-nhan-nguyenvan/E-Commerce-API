@@ -453,3 +453,4 @@ poetry.toml
 /.idea/misc.xml
 /.idea/ecommerce_api.iml
 /.idea/.gitignore
+/data.ecommerce.json

@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import generics, permissions, status
+from rest_framework import filters, generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
@@ -47,20 +48,19 @@ class UserListView(generics.ListAPIView):
     serializer_class = UserListSerializer
     permission_classes = [IsAdmin]
 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ["email", "is_active"]  # Fields to filter by
+    search_fields = ["email", "username"]  # You can search by email
+
     def get(self, request, *args, **kwargs):
-        default_limit = getattr(
-            settings, "DEFAULT_LIMIT", 10
-        )  # Default limit from settings or 10
-        default_offset = getattr(
-            settings, "DEFAULT_OFFSET", 0
-        )  # Default offset from settings or 0
+        default_limit = getattr(settings, "DEFAULT_LIMIT", 10)
+        default_offset = getattr(settings, "DEFAULT_OFFSET", 0)
 
         limit = request.query_params.get("limit", default_limit)
         offset = request.query_params.get("offset", default_offset)
 
-        cache_key = (
-            f"user_list{limit}_{offset}"  # Cache key depends on pagination params
-        )
+        filters_data = request.query_params.dict()  # All query params for cache key
+        cache_key = f"user_list_{limit}_{offset}_{filters_data}"
 
         cached_users = cache.get(cache_key)
 

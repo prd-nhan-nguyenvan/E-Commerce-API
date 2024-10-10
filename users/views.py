@@ -48,9 +48,15 @@ class UserListView(generics.ListAPIView):
     serializer_class = UserListSerializer
     permission_classes = [IsAdmin]
 
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_fields = ["email", "is_active"]  # Fields to filter by
     search_fields = ["email", "username"]  # You can search by email
+    ordering_fields = ["email", "date_joined"]
+    ordering = ["-date_joined"]  # Default
 
     def get(self, request, *args, **kwargs):
         default_limit = getattr(settings, "DEFAULT_LIMIT", 10)

@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
@@ -45,11 +47,49 @@ class UserListView(generics.ListAPIView):
     serializer_class = UserListSerializer
     permission_classes = [IsAdmin]
 
+    def get(self, request, *args, **kwargs):
+        default_limit = getattr(
+            settings, "DEFAULT_LIMIT", 10
+        )  # Default limit from settings or 10
+        default_offset = getattr(
+            settings, "DEFAULT_OFFSET", 0
+        )  # Default offset from settings or 0
+
+        limit = request.query_params.get("limit", default_limit)
+        offset = request.query_params.get("offset", default_offset)
+
+        cache_key = (
+            f"user_list{limit}_{offset}"  # Cache key depends on pagination params
+        )
+
+        cached_users = cache.get(cache_key)
+
+        if cached_users:
+            return Response(cached_users, status=status.HTTP_200_OK)
+
+        response = super().get(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response
+
 
 class UserDetailView(generics.RetrieveUpdateAPIView):
     queryset = get_user_model().objects.all()
     serializer_class = UserDetailSerializer
-    permission_classes = [IsAdmin]  # Only admin users can access this view
+    permission_classes = [IsAdmin]
+
+    def get(self, request, *args, **kwargs):
+        user_id = self.kwargs.get("pk")
+        cache_key = f"user_detail_{user_id}"
+
+        # Check if the data is in the cache
+        cached_user = cache.get(cache_key)
+        if cached_user:
+            return Response(cached_user, status=status.HTTP_200_OK)
+
+        # If not, retrieve the user from the database
+        response = super().get(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        return response
 
     def patch(self, request, *args, **kwargs):
         user = self.get_object()
@@ -58,15 +98,13 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
         if action == "block":
             user.is_active = False
             user.save()
-            return Response(
-                {"detail": "User blocked successfully."}, status=status.HTTP_200_OK
-            )
 
         elif action == "unblock":
             user.is_active = True
             user.save()
-            return Response(
-                {"detail": "User unblocked successfully."}, status=status.HTTP_200_OK
-            )
+
+        # Clear cache after updating the user
+        cache_key = f"user_detail_{user.id}"
+        cache.delete(cache_key)
 
         return super().patch(request, *args, **kwargs)

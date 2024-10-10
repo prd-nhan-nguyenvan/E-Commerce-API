@@ -1,11 +1,14 @@
 Django==5.1.1
 djangorestframework==3.15.2
 asgiref
+black
 certifi
 cffi
 charset-normalizer
+click
 cryptography
 django-cors-headers
+django-filter
 django-oauth-toolkit
 django-redis
 drf-yasg
@@ -17,7 +20,9 @@ mypy-extensions
 mysqlclient
 oauthlib
 packaging
+pathspec
 pillow
+platformdirs
 pycparser
 PyJWT
 python-decouple

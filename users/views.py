@@ -55,7 +55,7 @@ class UserListView(generics.ListAPIView):
     ]
     filterset_fields = ["email", "is_active"]  # Fields to filter by
     search_fields = ["email", "username"]  # You can search by email
-    ordering_fields = ["email", "date_joined"]
+    ordering_fields = ["email", "role", "date_joined"]
     ordering = ["-date_joined"]  # Default
 
     def get(self, request, *args, **kwargs):

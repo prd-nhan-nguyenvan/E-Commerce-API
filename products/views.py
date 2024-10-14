@@ -30,7 +30,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
             print("Serving from cache")
             data = cache.get(cache_key)
         else:
-            print("Serving from database")
+
             response = super().list(request, *args, **kwargs)
             cache.set(cache_key, response.data, timeout=60 * 60)
             data = response.data
@@ -82,10 +82,8 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
         cached_category = cache.get(cache_key)
 
         if cached_category:
-            print("Serving from cache")
             return Response(cached_category)
 
-        print("Serving from database")
         response = super().retrieve(request, *args, **kwargs)
         cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
         return response
@@ -121,10 +119,8 @@ class ProductListCreateView(generics.ListCreateAPIView):
         cached_product_list = cache.get(cache_key)
 
         if cached_product_list:
-            print("Serving product list from cache")
             return Response(cached_product_list)
 
-        print("Serving product list from database")
         response = super().list(request, *args, **kwargs)
         cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
         return response
@@ -200,11 +196,11 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
             cache_key = "slug"
 
         if cache_key in cache:
-            print("redis")
+
             queryset = cache.get(cache_key)
             return Response(queryset)
         else:
-            print("db")
+
             queryset = Product.objects.all()
             if slug is not None:
                 queryset = queryset.filter(slug__contains=slug).first()
@@ -240,10 +236,8 @@ class ProductReviewListView(generics.ListAPIView):
         cached_reviews = cache.get(cache_key)
 
         if cached_reviews:
-            print("Serving reviews from cache")
             return Response(cached_reviews)
 
-        print("Serving reviews from database")
         response = super().list(request, *args, **kwargs)
         cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
         return response

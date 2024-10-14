@@ -1,8 +1,10 @@
 from django.core.cache import cache
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -93,29 +95,28 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filterset_fields = ["category", "price"]
+    ordering_fields = ["name", "price", "created_at"]
+    search_fields = ["name", "description"]
 
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
-        default_limit = getattr(
-            settings, "DEFAULT_LIMIT", 10
-        )  # Default limit from settings or 10
-        default_offset = getattr(
-            settings, "DEFAULT_OFFSET", 0
-        )  # Default offset from settings or 0
+        default_limit = getattr(settings, "DEFAULT_LIMIT", 10)
+        default_offset = getattr(settings, "DEFAULT_OFFSET", 0)
 
         limit = request.query_params.get("limit", default_limit)
         offset = request.query_params.get("offset", default_offset)
 
-        cache_key = (
-            f"product_list_{limit}_{offset}"  # Cache key depends on pagination params
-        )
+        filters_data = request.query_params.dict()  # All query params for cache key
+        cache_key = f"product_list_{limit}_{offset}_{filters_data}"
 
         cached_product_list = cache.get(cache_key)
 
@@ -129,11 +130,10 @@ class ProductListCreateView(generics.ListCreateAPIView):
     @swagger_auto_schema(tags=["Products"])
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        self.invalidate_product_cache()  # Invalidate all cached pages
+        self.invalidate_product_cache()
         return Response(response.data, status=status.HTTP_201_CREATED)
 
     def invalidate_product_cache(self):
-        """Invalidate all product list caches"""
         keys = cache.keys("product_list_*")
         for key in keys:
             cache.delete(key)
@@ -182,6 +182,11 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         super().destroy(request, *args, **kwargs)
         cache.delete("product_list")
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def invalidate_product_cache(self):
+        keys = cache.keys("product_list_*")
+        for key in keys:
+            cache.delete(key)
 
 
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):

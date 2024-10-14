@@ -46,6 +46,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [IsAdminOrStaff]
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):

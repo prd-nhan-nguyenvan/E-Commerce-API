@@ -44,3 +44,5 @@ types-setuptools
 typing_extensions
 uritemplate
 urllib3
+
+factory_boy

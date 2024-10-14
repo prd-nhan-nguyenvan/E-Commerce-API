@@ -1,4 +1,3 @@
-import redis
 from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
@@ -7,12 +6,11 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from authentication.permissions import IsAdminOrStaff
 from ecommerce_project import settings
 
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
-
-redis_instance = redis.StrictRedis(host="127.0.0.1", port=6379, db=1)
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -23,7 +21,7 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):

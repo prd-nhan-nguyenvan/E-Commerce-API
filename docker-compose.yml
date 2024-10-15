@@ -31,7 +31,7 @@ services:
       - xpack.security.enabled=false
       - "discovery.type=single-node"
       - ES_JAVA_OPTS=-Xms4g -Xmx4g
-      - indices.breaker.total.limit=50%
+      - indices.breaker.total.limit=20%
 
 
     networks:

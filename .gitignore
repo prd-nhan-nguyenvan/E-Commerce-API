@@ -145,3 +145,4 @@ atlassian-ide-plugin.xml
 *.iml
 modules.xml
 *.ipr
+/data/

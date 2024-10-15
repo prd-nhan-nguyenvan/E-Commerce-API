@@ -37,7 +37,7 @@ urlpatterns = [
     path(
         "products/<int:product_id>/reviews/",
         ProductReviewListView.as_view(),
-        name="product_reviews",
+        name="product-reviews",
     ),
-    path("reviews/", ReviewCreateView.as_view(), name="create_review"),
+    path("reviews/", ReviewCreateView.as_view(), name="create-review"),
 ]

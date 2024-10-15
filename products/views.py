@@ -1,18 +1,18 @@
-import redis
 from django.core.cache import cache
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from authentication.permissions import IsAdminOrStaff
 from ecommerce_project import settings
 
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
-
-redis_instance = redis.StrictRedis(host="127.0.0.1", port=6379, db=1)
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -23,16 +23,15 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):
         cache_key = "category_list"
         if cache_key in cache:
-            print("Serving from cache")
             data = cache.get(cache_key)
         else:
-            print("Serving from database")
+
             response = super().list(request, *args, **kwargs)
             cache.set(cache_key, response.data, timeout=60 * 60)
             data = response.data
@@ -48,6 +47,12 @@ class CategoryListCreateView(generics.ListCreateAPIView):
 class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = [IsAdminOrStaff]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):
@@ -84,10 +89,8 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
         cached_category = cache.get(cache_key)
 
         if cached_category:
-            print("Serving from cache")
             return Response(cached_category)
 
-        print("Serving from database")
         response = super().retrieve(request, *args, **kwargs)
         cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
         return response
@@ -98,35 +101,32 @@ class ProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
     parser_classes = [MultiPartParser, FormParser]
     pagination_class = LimitOffsetPagination
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filterset_fields = ["category", "price"]
+    ordering_fields = ["name", "price", "created_at"]
+    search_fields = ["name", "description"]
 
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
-        default_limit = getattr(
-            settings, "DEFAULT_LIMIT", 10
-        )  # Default limit from settings or 10
-        default_offset = getattr(
-            settings, "DEFAULT_OFFSET", 0
-        )  # Default offset from settings or 0
+        default_limit = getattr(settings, "DEFAULT_LIMIT", 10)
+        default_offset = getattr(settings, "DEFAULT_OFFSET", 0)
 
         limit = request.query_params.get("limit", default_limit)
         offset = request.query_params.get("offset", default_offset)
 
-        cache_key = (
-            f"product_list_{limit}_{offset}"  # Cache key depends on pagination params
-        )
+        filters_data = request.query_params.dict()  # All query params for cache key
+        cache_key = f"product_list_{limit}_{offset}_{filters_data}"
 
         cached_product_list = cache.get(cache_key)
 
         if cached_product_list:
-            print("Serving product list from cache")
             return Response(cached_product_list)
 
-        print("Serving product list from database")
         response = super().list(request, *args, **kwargs)
         cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
         return response
@@ -134,11 +134,10 @@ class ProductListCreateView(generics.ListCreateAPIView):
     @swagger_auto_schema(tags=["Products"])
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        self.invalidate_product_cache()  # Invalidate all cached pages
+        self.invalidate_product_cache()
         return Response(response.data, status=status.HTTP_201_CREATED)
 
     def invalidate_product_cache(self):
-        """Invalidate all product list caches"""
         keys = cache.keys("product_list_*")
         for key in keys:
             cache.delete(key)
@@ -148,6 +147,11 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     parser_classes = [MultiPartParser, FormParser]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
@@ -172,21 +176,26 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             )
 
         response = super().update(request, *args, **kwargs)
-        cache.delete("product_list")
+        self.invalidate_product_cache()
 
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def patch(self, request, *args, **kwargs):
         response = super().partial_update(request, *args, **kwargs)
-        cache.delete("product_list")
+        self.invalidate_product_cache()
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def delete(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        cache.delete("product_list")
+        self.invalidate_product_cache()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def invalidate_product_cache(self):
+        keys = cache.keys("product_list_*")
+        for key in keys:
+            cache.delete(key)
 
 
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):
@@ -202,11 +211,11 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
             cache_key = "slug"
 
         if cache_key in cache:
-            print("redis")
+
             queryset = cache.get(cache_key)
             return Response(queryset)
         else:
-            print("db")
+
             queryset = Product.objects.all()
             if slug is not None:
                 queryset = queryset.filter(slug__contains=slug).first()
@@ -225,11 +234,19 @@ class ReviewCreateView(generics.CreateAPIView):
 
     @swagger_auto_schema(tags=["Review"])
     def post(self, request, *args, **kwargs):
+        product_id = request.data.get("product")
+        if not product_id:
+            return Response(
+                {"error": "Product ID is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        cache_key = f"product_{product_id}_reviews"
+        cache.delete(cache_key)
         return super().create(request, *args, **kwargs)
 
 
 class ProductReviewListView(generics.ListAPIView):
     serializer_class = ReviewSerializer
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         product_id = self.kwargs["product_id"]
@@ -242,10 +259,8 @@ class ProductReviewListView(generics.ListAPIView):
         cached_reviews = cache.get(cache_key)
 
         if cached_reviews:
-            print("Serving reviews from cache")
             return Response(cached_reviews)
 
-        print("Serving reviews from database")
         response = super().list(request, *args, **kwargs)
         cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
         return response

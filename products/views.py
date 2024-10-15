@@ -234,11 +234,19 @@ class ReviewCreateView(generics.CreateAPIView):
 
     @swagger_auto_schema(tags=["Review"])
     def post(self, request, *args, **kwargs):
+        product_id = request.data.get("product")
+        if not product_id:
+            return Response(
+                {"error": "Product ID is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        cache_key = f"product_{product_id}_reviews"
+        cache.delete(cache_key)
         return super().create(request, *args, **kwargs)
 
 
 class ProductReviewListView(generics.ListAPIView):
     serializer_class = ReviewSerializer
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         product_id = self.kwargs["product_id"]

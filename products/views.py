@@ -148,6 +148,11 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductSerializer
     parser_classes = [MultiPartParser, FormParser]
 
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [IsAdminOrStaff()]
+
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)

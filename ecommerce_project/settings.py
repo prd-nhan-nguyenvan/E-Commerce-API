@@ -25,7 +25,6 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "oauth2_provider",
-    # my_app
     "users",
     "authentication",
     "orders",
@@ -122,11 +121,10 @@ MEDIA_ROOT = BASE_DIR / "media/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",  # OAuth2 authentication
-        "rest_framework.authentication.SessionAuthentication",  # Optional for browsable API login
-    ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "oauth2_provider.contrib.rest_framework.OAuth2Authentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_LIMIT": 10,
@@ -158,16 +156,14 @@ SWAGGER_SETTINGS = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Your frontend URL
-    "http://localhost:5174",  # Your frontend URL
+    "http://localhost:5173",
+    "http://localhost:5174",
 ]
 
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": config(
-            "REDIS_URL"
-        ),  # Local Link provided by the redis-server command
+        "LOCATION": config("REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },

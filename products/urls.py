@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    BulkImportProductView,
     CategoryListCreateView,
     CategoryRetrieveBySlugView,
     CategoryRetrieveUpdateDestroyView,
@@ -33,6 +34,11 @@ urlpatterns = [
         "products/slug/<slug:slug>/",
         ProductRetrieveBySlugView.as_view(),
         name="product-detail-by-slug",
+    ),
+    path(
+        "products/bulk-import/",
+        BulkImportProductView.as_view(),
+        name="bulk-import-products",
     ),
     path(
         "products/<int:product_id>/reviews/",

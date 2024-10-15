@@ -1,5 +1,12 @@
+import csv
+from io import StringIO
+
+import requests
 from django.core.cache import cache
+from django.core.files.base import ContentFile
+from django.template.defaultfilters import slugify
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -7,6 +14,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from authentication.permissions import IsAdminOrStaff
 from ecommerce_project import settings
@@ -223,6 +231,92 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
                 cache.set(cache_key, serializer.data, timeout=60 * 60)
 
                 return Response(serializer.data)
+
+
+class BulkImportProductView(APIView):
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAdminOrStaff]
+
+    @swagger_auto_schema(
+        tags=["Products"],
+        manual_parameters=[
+            openapi.Parameter(
+                "file",
+                openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                description="CSV file with product data",
+            )
+        ],
+    )
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get("file")
+        if not file:
+            return Response(
+                {"error": "No file provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            file_data = file.read().decode("utf-8")
+            csv_data = csv.DictReader(StringIO(file_data))
+            products = []
+            for row in csv_data:
+                try:
+                    category, created = Category.objects.get_or_create(
+                        name=row["category_name"]
+                    )
+                    counter = 1
+                    slug = slugify(row["name"])
+                    # Check if a product with the same name already exists
+                    if Product.objects.filter(slug=slug).exists():
+                        slug = f"{slug}_{counter}"
+                        while Product.objects.filter(slug=slug).exists():
+                            counter += 1
+                            slug = f"{slug}_{counter}"
+
+                    if any(p.slug == slug for p in products):
+                        slug = f"{slug}_{counter}"
+                        while any(p.slug == slug for p in products):
+                            counter += 1
+                            slug = f"{slug}_{counter}"
+
+                    product = Product(
+                        name=row["name"],
+                        description=row["description"],
+                        price=row["price"],
+                        sell_price=row["sell_price"],
+                        on_sell=row["on_sell"],
+                        stock=row["stock"],
+                        category=category,
+                        slug=slug,
+                    )
+                    if "image_url" in row and row["image_url"]:
+                        image_response = requests.get(row["image_url"])
+                        if image_response.status_code == 200:
+                            product.image.save(
+                                f"{slugify(product.name)}.jpg",
+                                ContentFile(image_response.content),
+                                save=False,
+                            )
+                    products.append(product)
+                except KeyError as e:
+                    return Response(
+                        {"error": f"Missing key: {str(e)}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+            Product.objects.bulk_create(products)
+            self.invalidate_product_cache()
+            return Response(
+                {"message": "Products imported successfully."},
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def invalidate_product_cache(self):
+        keys = cache.keys("product_list_*")
+        for key in keys:
+            cache.delete(key)
 
 
 class ReviewCreateView(generics.CreateAPIView):

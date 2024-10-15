@@ -4,7 +4,7 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -29,7 +29,6 @@ class CategoryListCreateView(generics.ListCreateAPIView):
     def get(self, request, *args, **kwargs):
         cache_key = "category_list"
         if cache_key in cache:
-            print("Serving from cache")
             data = cache.get(cache_key)
         else:
 
@@ -49,6 +48,11 @@ class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrStaff]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.AllowAny()]
+        return [IsAdminOrStaff()]
 
     @swagger_auto_schema(tags=["Categories"])
     def get(self, request, *args, **kwargs):
@@ -95,7 +99,7 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    parser_classes = [MultiPartParser, FormParser]
     pagination_class = LimitOffsetPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
     filterset_fields = ["category", "price"]
@@ -167,20 +171,20 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             )
 
         response = super().update(request, *args, **kwargs)
-        cache.delete("product_list")
+        self.invalidate_product_cache()
 
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def patch(self, request, *args, **kwargs):
         response = super().partial_update(request, *args, **kwargs)
-        cache.delete("product_list")
+        self.invalidate_product_cache()
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def delete(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        cache.delete("product_list")
+        self.invalidate_product_cache()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def invalidate_product_cache(self):

@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/users/", include("users.urls")),
     path("api/carts/", include("carts.urls")),
     path("api/orders/", include("orders.urls")),
+    path("api/search/", include("search.urls")),
     path(
         "swagger/",
         schema_view.with_ui("swagger", cache_timeout=0),
@@ -32,7 +33,6 @@ urlpatterns = [
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
 ]
-
 
 # Only serve media files in development
 if settings.DEBUG:

@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django_elasticsearch_dsl",
     "drf_yasg",
     "rest_framework",
     "rest_framework.authtoken",
@@ -30,6 +31,7 @@ INSTALLED_APPS = [
     "orders",
     "products",
     "carts",
+    "search",
 ]
 
 MIDDLEWARE = [
@@ -167,5 +169,13 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
+    }
+}
+
+ELASTICSEARCH_DSL = {
+    "default": {
+        "hosts": f'http://{config("ES_HOST")}:{config("ES_PORT")}',
+        "http_auth": ("elastic", config("ELASTIC_PASSWORD")),
+        "verify_certs": False,
     }
 }

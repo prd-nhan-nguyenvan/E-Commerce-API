@@ -309,6 +309,7 @@ class ESSearchProductView(APIView):
             fields=["name", "description", "slug", "category.name"],
             operator="or",
             type="best_fields",
+            fuzziness="AUTO",
         )
 
         # Apply pagination

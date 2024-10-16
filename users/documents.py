@@ -19,4 +19,7 @@ class UserDocument(Document):
             "id",
             "username",
             "email",
+            "role",
+            "is_active",
+            "date_joined",
         ]

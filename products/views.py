@@ -1,10 +1,7 @@
 import csv
 from io import StringIO
 
-import requests
 from django.core.cache import cache
-from django.core.files.base import ContentFile
-from django.template.defaultfilters import slugify
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -19,8 +16,10 @@ from rest_framework.views import APIView
 from authentication.permissions import IsAdminOrStaff
 from ecommerce_project import settings
 
+from .helpers import invalidate_product_cache
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
+from .tasks import bulk_import_products
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -142,13 +141,8 @@ class ProductListCreateView(generics.ListCreateAPIView):
     @swagger_auto_schema(tags=["Products"])
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
         return Response(response.data, status=status.HTTP_201_CREATED)
-
-    def invalidate_product_cache(self):
-        keys = cache.keys("product_list_*")
-        for key in keys:
-            cache.delete(key)
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -184,26 +178,21 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             )
 
         response = super().update(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
 
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def patch(self, request, *args, **kwargs):
         response = super().partial_update(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def delete(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def invalidate_product_cache(self):
-        keys = cache.keys("product_list_*")
-        for key in keys:
-            cache.delete(key)
 
 
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):
@@ -258,65 +247,14 @@ class BulkImportProductView(APIView):
         try:
             file_data = file.read().decode("utf-8")
             csv_data = csv.DictReader(StringIO(file_data))
-            products = []
-            for row in csv_data:
-                try:
-                    category, created = Category.objects.get_or_create(
-                        name=row["category_name"]
-                    )
-                    counter = 1
-                    slug = slugify(row["name"])
-                    # Check if a product with the same name already exists
-                    if Product.objects.filter(slug=slug).exists():
-                        slug = f"{slug}_{counter}"
-                        while Product.objects.filter(slug=slug).exists():
-                            counter += 1
-                            slug = f"{slug}_{counter}"
-
-                    if any(p.slug == slug for p in products):
-                        slug = f"{slug}_{counter}"
-                        while any(p.slug == slug for p in products):
-                            counter += 1
-                            slug = f"{slug}_{counter}"
-
-                    product = Product(
-                        name=row["name"],
-                        description=row["description"],
-                        price=row["price"],
-                        sell_price=row["sell_price"],
-                        on_sell=row["on_sell"],
-                        stock=row["stock"],
-                        category=category,
-                        slug=slug,
-                    )
-                    if "image_url" in row and row["image_url"]:
-                        image_response = requests.get(row["image_url"])
-                        if image_response.status_code == 200:
-                            product.image.save(
-                                f"{slugify(product.name)}.jpg",
-                                ContentFile(image_response.content),
-                                save=False,
-                            )
-                    products.append(product)
-                except KeyError as e:
-                    return Response(
-                        {"error": f"Missing key: {str(e)}"},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-
-            Product.objects.bulk_create(products)
-            self.invalidate_product_cache()
+            product_data_list = [row for row in csv_data]
+            bulk_import_products.delay(product_data_list)
             return Response(
-                {"message": "Products imported successfully."},
-                status=status.HTTP_201_CREATED,
+                {"message": "Products import started."},
+                status=status.HTTP_202_ACCEPTED,
             )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    def invalidate_product_cache(self):
-        keys = cache.keys("product_list_*")
-        for key in keys:
-            cache.delete(key)
 
 
 class ReviewCreateView(generics.CreateAPIView):

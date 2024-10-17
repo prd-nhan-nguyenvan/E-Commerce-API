@@ -1,6 +1,7 @@
 import csv
 from io import StringIO
 
+from django.conf import settings
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg import openapi
@@ -14,8 +15,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authentication.permissions import IsAdminOrStaff
-from ecommerce_project import settings
 
+from .documents import ProductDocument
 from .helpers import invalidate_product_cache
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
@@ -255,6 +256,110 @@ class BulkImportProductView(APIView):
             )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ESSearchProductView(APIView):
+    permission_classes = [permissions.AllowAny]
+    pagination_class = LimitOffsetPagination
+
+    @swagger_auto_schema(
+        tags=["Products"],
+        manual_parameters=[
+            openapi.Parameter(
+                "q",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description="Search query",
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                description="Limit for pagination",
+            ),
+            openapi.Parameter(
+                "offset",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                description="Offset for pagination",
+            ),
+        ],
+    )
+    def get(self, request, *args, **kwargs):
+        query = request.query_params.get("q")
+        limit = int(request.query_params.get("limit", 10))
+        offset = int(request.query_params.get("offset", 0))
+
+        if not query:
+            return Response(
+                {"error": "Search query is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Cache key generation based on query, limit, and offset
+        cache_key = f"search_products_{query}_{limit}_{offset}"
+        cached_result = cache.get(cache_key)
+
+        if cached_result:
+            return Response(cached_result, status=status.HTTP_200_OK)
+
+        search = ProductDocument.search().query(
+            "multi_match",
+            query=query,
+            fields=["name", "description", "slug", "category.name"],
+            operator="or",
+            type="best_fields",
+            fuzziness="AUTO",
+        )
+
+        # Apply pagination
+        search = search[offset : offset + limit]
+        response = search.execute()
+
+        base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
+        products = [
+            {
+                "id": hit.to_dict().get("id"),  # Assuming 'id' is the product ID
+                "category": hit.to_dict().get("category", {}).get("id"),
+                "name": hit.to_dict().get("name"),
+                "slug": hit.to_dict().get("slug"),
+                "description": hit.to_dict().get("description"),
+                "price": hit.to_dict().get("price"),
+                "sell_price": hit.to_dict().get("sell_price"),
+                "on_sell": hit.to_dict().get("on_sell"),
+                "stock": hit.to_dict().get("stock"),
+                "image": (
+                    f"{base_url}{hit.to_dict().get('image')}"
+                    if hit.to_dict().get("image")
+                    else None
+                ),
+                "created_at": hit.to_dict().get("created_at"),
+                "updated_at": hit.to_dict().get("updated_at"),
+            }
+            for hit in response.hits
+        ]
+
+        total = response.hits.total.value
+
+        result = {
+            "count": total,
+            "next": (
+                None
+                if (offset + limit) >= total
+                else f"?q={query}&limit={limit}&offset={offset + limit}"
+            ),
+            "previous": (
+                None
+                if offset == 0
+                else f"?q={query}&limit={limit}&offset={max(0, offset - limit)}"
+            ),
+            "results": products,
+        }
+
+        # Cache the result for 1 hour
+        cache.set(cache_key, result, timeout=60 * 60)
+
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class ReviewCreateView(generics.CreateAPIView):

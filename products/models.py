@@ -59,6 +59,9 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        ordering = ["-created_at", "-updated_at", "name"]
+
 
 class Review(models.Model):
     product = models.ForeignKey(

@@ -1,5 +1,9 @@
+import csv
+from io import StringIO
+
 from django.core.cache import cache
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -7,12 +11,15 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from authentication.permissions import IsAdminOrStaff
 from ecommerce_project import settings
 
+from .helpers import invalidate_product_cache
 from .models import Category, Product, Review
 from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
+from .tasks import bulk_import_products
 
 
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -134,13 +141,8 @@ class ProductListCreateView(generics.ListCreateAPIView):
     @swagger_auto_schema(tags=["Products"])
     def post(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
         return Response(response.data, status=status.HTTP_201_CREATED)
-
-    def invalidate_product_cache(self):
-        keys = cache.keys("product_list_*")
-        for key in keys:
-            cache.delete(key)
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -176,26 +178,21 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             )
 
         response = super().update(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
 
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def patch(self, request, *args, **kwargs):
         response = super().partial_update(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
         return Response(response.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["Products"])
     def delete(self, request, *args, **kwargs):
         super().destroy(request, *args, **kwargs)
-        self.invalidate_product_cache()
+        invalidate_product_cache()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def invalidate_product_cache(self):
-        keys = cache.keys("product_list_*")
-        for key in keys:
-            cache.delete(key)
 
 
 class ProductRetrieveBySlugView(generics.RetrieveAPIView):
@@ -223,6 +220,41 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
                 cache.set(cache_key, serializer.data, timeout=60 * 60)
 
                 return Response(serializer.data)
+
+
+class BulkImportProductView(APIView):
+    parser_classes = [MultiPartParser]
+    permission_classes = [IsAdminOrStaff]
+
+    @swagger_auto_schema(
+        tags=["Products"],
+        manual_parameters=[
+            openapi.Parameter(
+                "file",
+                openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                description="CSV file with product data",
+            )
+        ],
+    )
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get("file")
+        if not file:
+            return Response(
+                {"error": "No file provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            file_data = file.read().decode("utf-8")
+            csv_data = csv.DictReader(StringIO(file_data))
+            product_data_list = [row for row in csv_data]
+            bulk_import_products.delay(product_data_list)
+            return Response(
+                {"message": "Products import started."},
+                status=status.HTTP_202_ACCEPTED,
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ReviewCreateView(generics.CreateAPIView):

@@ -8,9 +8,7 @@ from django.utils.text import slugify
 
 def upload_to(instance, filename):
     ext = filename.split(".")[-1]
-
     new_filename = f"{uuid.uuid4()}.{ext}"
-
     return os.path.join("products", new_filename)
 
 
@@ -22,6 +20,11 @@ class Category(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
+            original_slug = self.slug
+            counter = 1
+            while Category.objects.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}_{counter}"
+                counter += 1
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -46,6 +49,11 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
+            original_slug = self.slug
+            counter = 1
+            while Product.objects.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}_{counter}"
+                counter += 1
         super().save(*args, **kwargs)
 
     def __str__(self):

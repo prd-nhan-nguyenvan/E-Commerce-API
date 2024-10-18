@@ -19,7 +19,12 @@ from authentication.permissions import IsAdminOrStaff
 from .documents import ProductDocument
 from .helpers import invalidate_product_cache
 from .models import Category, Product, Review
-from .serializers import CategorySerializer, ProductSerializer, ReviewSerializer
+from .serializers import (
+    CategorySerializer,
+    ProductSearchResponseSerializer,
+    ProductSerializer,
+    ReviewSerializer,
+)
 from .tasks import bulk_import_products
 
 
@@ -224,7 +229,7 @@ class ProductRetrieveBySlugView(generics.RetrieveAPIView):
 
 
 class BulkImportProductView(APIView):
-    parser_classes = [MultiPartParser]
+    parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAdminOrStaff]
 
     @swagger_auto_schema(
@@ -284,6 +289,15 @@ class ESSearchProductView(APIView):
                 description="Offset for pagination",
             ),
         ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Successful product search response",
+                schema=ProductSearchResponseSerializer(),
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Search query is required.",
+            ),
+        },
     )
     def get(self, request, *args, **kwargs):
         query = request.query_params.get("q")

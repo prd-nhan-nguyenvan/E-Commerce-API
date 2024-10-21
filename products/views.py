@@ -105,7 +105,7 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
             return Response(cached_category)
 
         response = super().retrieve(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        cache.set(cache_key, response.data, timeout=60 * 60)
         return response
 
 
@@ -132,7 +132,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
         limit = request.query_params.get("limit", default_limit)
         offset = request.query_params.get("offset", default_offset)
 
-        filters_data = request.query_params.dict()  # All query params for cache key
+        filters_data = request.query_params.dict()
         cache_key = f"product_list_{limit}_{offset}_{filters_data}"
 
         cached_product_list = cache.get(cache_key)
@@ -141,7 +141,7 @@ class ProductListCreateView(generics.ListCreateAPIView):
             return Response(cached_product_list)
 
         response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        cache.set(cache_key, response.data, timeout=60 * 60)
         return response
 
     @swagger_auto_schema(tags=["Products"])
@@ -254,7 +254,6 @@ class BulkImportProductView(APIView):
             file_data = file.read().decode("utf-8")
             csv_data = csv.DictReader(StringIO(file_data))
 
-            # Define required columns
             required_columns = [
                 "name",
                 "description",
@@ -265,7 +264,6 @@ class BulkImportProductView(APIView):
                 "category_name",
             ]
 
-            # Check if CSV contains required headers
             if not all(col in csv_data.fieldnames for col in required_columns):
                 return Response(
                     {
@@ -274,12 +272,9 @@ class BulkImportProductView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Optionally, validate each row for missing/invalid data
             product_data_list = []
             for row in csv_data:
-                if not all(
-                    row.get(col) for col in required_columns
-                ):  # Check if any required column is empty
+                if not all(row.get(col) for col in required_columns):
                     return Response(
                         {"error": f"Row contains missing data: {row}"},
                         status=status.HTTP_400_BAD_REQUEST,
@@ -339,7 +334,6 @@ class ESSearchProductView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Cache key generation based on query, limit, and offset
         cache_key = f"search_products_{query}_{limit}_{offset}"
         cached_result = cache.get(cache_key)
 
@@ -355,14 +349,13 @@ class ESSearchProductView(APIView):
             fuzziness="AUTO",
         )
 
-        # Apply pagination
         search = search[offset : offset + limit]
         response = search.execute()
 
         base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
         products = [
             {
-                "id": hit.to_dict().get("id"),  # Assuming 'id' is the product ID
+                "id": hit.to_dict().get("id"),
                 "category": hit.to_dict().get("category", {}).get("id"),
                 "name": hit.to_dict().get("name"),
                 "slug": hit.to_dict().get("slug"),
@@ -399,7 +392,6 @@ class ESSearchProductView(APIView):
             "results": products,
         }
 
-        # Cache the result for 1 hour
         cache.set(cache_key, result, timeout=60 * 60)
 
         return Response(result, status=status.HTTP_200_OK)
@@ -410,7 +402,7 @@ class ReviewCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)  # Set the user from the request
+        serializer.save(user=self.request.user)
 
     @swagger_auto_schema(tags=["Review"])
     def post(self, request, *args, **kwargs):
@@ -442,5 +434,5 @@ class ProductReviewListView(generics.ListAPIView):
             return Response(cached_reviews)
 
         response = super().list(request, *args, **kwargs)
-        cache.set(cache_key, response.data, timeout=60 * 60)  # Cache for 1 hour
+        cache.set(cache_key, response.data, timeout=60 * 60)
         return response

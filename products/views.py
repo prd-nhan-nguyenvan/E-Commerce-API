@@ -253,12 +253,41 @@ class BulkImportProductView(APIView):
         try:
             file_data = file.read().decode("utf-8")
             csv_data = csv.DictReader(StringIO(file_data))
-            product_data_list = [row for row in csv_data]
+
+            # Define required columns
+            required_columns = [
+                "name",
+                "description",
+                "price",
+                "sell_price",
+                "on_sell",
+                "stock",
+                "category_name",
+            ]
+
+            # Check if CSV contains required headers
+            if not all(col in csv_data.fieldnames for col in required_columns):
+                return Response(
+                    {
+                        "error": f"CSV must contain the following columns: {', '.join(required_columns)}"
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Optionally, validate each row for missing/invalid data
+            product_data_list = []
+            for row in csv_data:
+                if not all(
+                    row.get(col) for col in required_columns
+                ):  # Check if any required column is empty
+                    return Response(
+                        {"error": f"Row contains missing data: {row}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                product_data_list.append(row)
+
             bulk_import_products.delay(product_data_list)
-            return Response(
-                {"message": "Products import started."},
-                status=status.HTTP_202_ACCEPTED,
-            )
+            return Response(status=status.HTTP_202_ACCEPTED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

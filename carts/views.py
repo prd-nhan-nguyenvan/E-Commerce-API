@@ -123,13 +123,16 @@ class GetCartView(APIView):
     )
     def get(self, request, *args, **kwargs):
         cache_key = f"user_cart_{request.user.id}"
-        cart = cache.get(cache_key)
+        cached_cart = cache.get(cache_key)
 
-        if cart is None:
-            cart = Cart.objects.get_or_create(user=request.user)
-            cache.set(cache_key, cart, timeout=60 * 5)
+        if cached_cart is None:
+            cart, created = Cart.objects.get_or_create(user=request.user)
+            serializer = CartSerializer(cart)
+            cache.set(cache_key, serializer.data, timeout=60 * 5)
+        else:
+            serializer = CartSerializer(data=cached_cart)
+            serializer.is_valid()
 
-        serializer = CartSerializer(cart)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

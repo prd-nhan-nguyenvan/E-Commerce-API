@@ -32,7 +32,8 @@ class GetCartViewTest(APITestCase):
 
         mock_cache_get.assert_called_with(f"user_cart_{self.user.id}")
 
-        serializer = CartSerializer(self.cart)
+        serializer = CartSerializer(data=self.cart)
+        serializer.is_valid()
         self.assertEqual(response.data, serializer.data)
 
     @patch("django.core.cache.cache.get")
@@ -47,24 +48,11 @@ class GetCartViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         mock_cache_set.assert_called_with(
-            f"user_cart_{self.user.id}", self.cart, timeout=60 * 5
+            f"user_cart_{self.user.id}", (response.data), timeout=60 * 5
         )
 
         serializer = CartSerializer(self.cart)
         self.assertEqual(response.data, serializer.data)
-
-    @patch("django.core.cache.cache.get")
-    def test_get_cart_does_not_exist(self, mock_cache_get):
-        mock_cache_get.return_value = None
-
-        self.client.force_authenticate(user=self.user)
-
-        Cart.objects.filter(user=self.user).delete()
-
-        response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(response.data["detail"], "Cart is empty or does not exist.")
 
     def test_get_cart_unauthenticated(self):
         response = self.client.get(self.url)

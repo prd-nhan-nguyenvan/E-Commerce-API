@@ -129,10 +129,9 @@ class GetCartView(APIView):
             cart, created = Cart.objects.get_or_create(user=request.user)
             serializer = CartSerializer(cart)
             cache.set(cache_key, serializer.data, timeout=60 * 5)
-        else:
-            serializer = CartSerializer(data=cached_cart)
-            serializer.is_valid()
 
+        else:
+            return Response(cached_cart, status=status.HTTP_200_OK)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

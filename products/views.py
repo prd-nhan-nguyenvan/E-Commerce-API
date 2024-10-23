@@ -400,6 +400,26 @@ class ESSearchProductView(APIView):
 class MoreLikeThisProductView(APIView):
     permission_classes = [permissions.AllowAny]
 
+    @swagger_auto_schema(
+        tags=["Products"],
+        manual_parameters=[
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                description="Limit for pagination",
+            ),
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Successful product search response",
+                schema=ProductSearchResponseSerializer(),
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Search query is required.",
+            ),
+        },
+    )
     def get(self, request, *args, **kwargs):
         product_id = self.kwargs["product_id"]
         limit = int(request.query_params.get("limit", 10))

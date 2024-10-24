@@ -29,24 +29,42 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
-
         user = self.context["request"].user
-        user_profile = UserProfile.objects.get(user=user)
-        validated_data["address"] = validated_data.get("address", user_profile.address)
-
+        validated_data["address"] = validated_data.get(
+            "address", UserProfile.objects.get(user=user).address
+        )
         order = Order.objects.create(**validated_data)
+
         for item_data in items_data:
             product = item_data["product"]
+            if product.stock < item_data["quantity"]:
+                raise serializers.ValidationError(
+                    f"Not enough stock for {product.name}."
+                )
+            product.stock -= item_data["quantity"]
+            product.save()
 
             item_data["price_at_purchase"] = (
                 product.sell_price if product.on_sell else product.price
             )
-
             OrderItem.objects.create(order=order, **item_data)
         return order
 
     def validate(self, data):
-        # Add validation logic if needed
+        if "items" in data:
+            if not data["items"]:
+                raise serializers.ValidationError(
+                    "An order must contain at least one item."
+                )
+            for item in data["items"]:
+                if item["quantity"] <= 0:
+                    raise serializers.ValidationError(
+                        "Quantity must be greater than zero."
+                    )
+                if item["product"].stock < item["quantity"]:
+                    raise serializers.ValidationError(
+                        f"Not enough stock for {item['product'].name}."
+                    )
         return data
 
 

@@ -282,7 +282,10 @@ class BulkImportProductView(APIView):
                 product_data_list.append(row)
 
             bulk_import_products.delay(product_data_list)
-            return Response(status=status.HTTP_202_ACCEPTED)
+            return Response(
+                data={"message": "Products are being imported."},
+                status=status.HTTP_202_ACCEPTED,
+            )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

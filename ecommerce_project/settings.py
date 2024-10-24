@@ -15,21 +15,22 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "celery",
+    "corsheaders",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
     "django_elasticsearch_dsl",
     "drf_yasg",
-    "rest_framework",
-    "corsheaders",
     "oauth2_provider",
-    "users",
+    "rest_framework",
+    # internal apps
     "authentication",
+    "carts",
     "orders",
     "products",
-    "carts",
     "search",
+    "users",
 ]
 
 MIDDLEWARE = [

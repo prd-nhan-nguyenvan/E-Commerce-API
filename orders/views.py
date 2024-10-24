@@ -6,6 +6,8 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from authentication.permissions import IsAdminOrStaff
+
 from .models import Order, OrderItem
 from .serializers import (
     AddOrderItemSerializer,
@@ -184,7 +186,10 @@ class RemoveFromOrderView(APIView):
 class OrderStatusUpdateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    @swagger_auto_schema(tags=["Order"], request_body=OrderStatusUpdateSerializer)
+    @swagger_auto_schema(
+        tags=["Order"],
+        request_body=OrderStatusUpdateSerializer,
+    )
     def post(self, request, order_id, *args, **kwargs):
         order = get_object_or_404(Order, id=order_id, user=request.user)
         serializer = OrderStatusUpdateSerializer(order, data=request.data)
@@ -199,3 +204,25 @@ class OrderStatusUpdateView(APIView):
             )
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminOrderStatusUpdateView(APIView):
+    permission_classes = [IsAdminOrStaff]
+
+    @swagger_auto_schema(
+        tags=["Order"],
+        request_body=OrderStatusUpdateSerializer,
+    )
+    def post(self, request, order_id, *args, **kwargs):
+        order = get_object_or_404(Order, id=order_id)
+        serializer = OrderStatusUpdateSerializer(order, data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "Order status updated successfully",
+                    "order": serializer.data,
+                }
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

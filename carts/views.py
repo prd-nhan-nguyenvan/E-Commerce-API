@@ -234,3 +234,33 @@ class UpdateRemoveCartItemView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class EmptyCartView(APIView):
+    @swagger_auto_schema(
+        tags=["Cart"],
+        responses={
+            status.HTTP_204_NO_CONTENT: openapi.Response(
+                description="Cart emptied successfully"
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Unauthorized",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "detail": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Authentication credentials were not provided.",
+                        ),
+                    },
+                ),
+            ),
+        },
+        operation_description="Empty the cart",
+    )
+    def delete(self, request, *args, **kwargs):
+        cart = get_object_or_404(Cart, user=request.user)
+        cart.items.all().delete()
+        cache_key = f"user_cart_{request.user.id}"
+        cache.delete(cache_key)
+        return Response(status=status.HTTP_204_NO_CONTENT)

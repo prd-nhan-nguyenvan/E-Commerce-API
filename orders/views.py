@@ -206,6 +206,9 @@ class OrderStatusUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+#############################################
+############### Admin  ######################
+#############################################
 class AdminOrderStatusUpdateView(APIView):
     permission_classes = [IsAdminOrStaff]
 
@@ -226,3 +229,43 @@ class AdminOrderStatusUpdateView(APIView):
                 }
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AdminOrderListView(generics.ListAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [IsAdminOrStaff]
+
+    @swagger_auto_schema(tags=["Order"])
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+class AdminOrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [IsAdminOrStaff]
+
+    @swagger_auto_schema(tags=["Order"])
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Order"])
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Order"])
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @swagger_auto_schema(tags=["Order"])
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+
+        return super().partial_update(request, *args, **kwargs)

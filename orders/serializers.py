@@ -20,8 +20,17 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ["id", "user", "status", "total_price", "address", "items"]
-        read_only_fields = ["user", "status", "total_price"]
+        fields = [
+            "id",
+            "user",
+            "status",
+            "total_price",
+            "address",
+            "items",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["user", "status", "total_price", "created_at", "updated_at"]
 
     def get_total_price(self, order):
         # Calculate the total price from the items in the order

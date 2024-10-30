@@ -138,7 +138,11 @@ repos:
           - "--quiet"
         exclude: "(migrations/|docs/|templates/|geo/|sent_emails/)"
 
-  - repo: https://github.com/qoomon/git-conventional-commits
-    rev: 'v2.6.7'
+  - repo: "https://github.com/alessandrojcm/commitlint-pre-commit-hook"
+    rev: v9.1.0
     hooks:
-      - id: conventional-commits
+      # https://www.conventionalcommits.org/en/v1.0.0/#summary
+      # https://github.com/conventional-changelog/commitlint/#what-is-commitlint
+      - id: commitlint
+        stages:
+          - commit-msg

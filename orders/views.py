@@ -7,7 +7,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authentication.permissions import IsAdminOrStaff
-
 from .models import Order, OrderItem
 from .serializers import (
     AddOrderItemSerializer,
@@ -158,7 +157,6 @@ class AddOrderItemView(APIView):
 
 
 class RemoveFromOrderView(APIView):
-
     @swagger_auto_schema(tags=["Order"])
     def delete(self, request, order_id, product_id, *args, **kwargs):
         order = get_object_or_404(Order, id=order_id, user=request.user)
@@ -206,9 +204,6 @@ class OrderStatusUpdateView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-#############################################
-############### Admin  ######################
-#############################################
 class AdminOrderStatusUpdateView(APIView):
     permission_classes = [IsAdminOrStaff]
 

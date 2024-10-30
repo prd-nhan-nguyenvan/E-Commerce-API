@@ -9,7 +9,6 @@ User = get_user_model()
 
 
 class ChangePasswordViewTestCase(APITestCase):
-
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(

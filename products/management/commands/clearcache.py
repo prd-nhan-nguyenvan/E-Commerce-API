@@ -15,7 +15,6 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Cleared keys in database 1:"))
             for key in keys:
                 self.stdout.write(f"{key.decode('utf-8')}")
-
         else:
             self.stdout.write(
                 self.style.WARNING("No keys found in database 1 to clear.")

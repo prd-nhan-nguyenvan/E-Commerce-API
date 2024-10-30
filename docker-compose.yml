@@ -1,59 +1,48 @@
 version: '3'
 
 services:
-  db:
-    image: mysql:8.0
+  mysql:
     restart: always
-    env_file:
-      - .env_docker_mysql
+    image: 'mysql:8.0.28'
+    container_name: mysql_8
     ports:
-      - '3306:3306'
+      - "${MYSQL_PORT}:3306"
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_PASSWORD}"
+      MYSQL_DATABASE: "${MYSQL_DATABASE}"
     volumes:
-      - my-db:/var/lib/mysql
-    networks:
-      - app-network
+      - ./mysql:/etc/mysql/conf.d
+      - ./mysqldump/:/docker-entrypoint-initdb.d/
+      - mysql-8-data:/var/lib/mysql
 
   redis:
-    image: redis:6.0
+    restart: always
+    image: redis
+    container_name: redis
     ports:
-      - "6379:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    networks:
-      - app-network
-
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis-data:/data
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.4
+    restart: always
+    image: 'elasticsearch:7.10.1'
+    container_name: elasticsearch
+    ports:
+      - 9205:9200
     environment:
-      - xpack.security.enabled=false
       - "discovery.type=single-node"
-      - ES_JAVA_OPTS=-Xms4g -Xmx4g
-      - indices.breaker.total.limit=20%
-
-
-    networks:
-      - ek-net
-    ports:
-      - 9200:9200
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.13.4
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elastic-container:9200
-    networks:
-      - ek-net
-    depends_on:
-      - elasticsearch
-    ports:
-      - 5601:5601
+      - transport.tcp.port=9205
+      - http.port=9200
+      - http.cors.allow-credentials=true
+      - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
+      - http.cors.allow-origin=*
+      - http.cors.enabled=true
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
 
 volumes:
-  my-db:
-  certs:
-
-networks:
-  app-network:
-  ek-net:
-    driver: bridge
+  mysql-8-data:
+  redis-data:
+  elasticsearch-data:

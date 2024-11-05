@@ -23,7 +23,7 @@ class CustomTokenRefreshViewTest(APITestCase):
         cls.url = reverse("token_refresh")
 
     @classmethod
-    def create_user(self):
+    def create_user(cls):
         username = f"testuser-{uuid4()}"
         return get_user_model().objects.create_user(
             username=username,

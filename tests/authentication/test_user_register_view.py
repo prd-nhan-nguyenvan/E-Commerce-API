@@ -1,59 +1,60 @@
-from django.contrib.auth import get_user_model
+import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
-
-User = get_user_model()
 
 
-class RegisterViewTest(APITestCase):
-    def setUp(self):
-        self.url = reverse("register")
+@pytest.fixture
+def url():
+    return reverse("register")
 
-    def test_register_user_success(self):
-        data = {
-            "username": "testuser",
-            "email": "testuser@example.com",
-            "password": "testpassword123",
-        }
-        response = self.client.post(self.url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data, {"message": "User created successfully"})
+@pytest.mark.django_db
+def test_register_user_success(api_client, url, clear_users):
+    data = {
+        "username": "testuser",
+        "email": "testuser@example.com",
+        "password": "testpassword123",
+    }
+    response = api_client.post(url, data, format="json")
 
-    def test_register_user_empty_username(self):
-        data = {
-            "username": "",
-            "email": "valid.email@example.com",
-            "password": "validPassword123",
-        }
-        response = self.client.post(self.url, data, format="json")
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data == {"message": "User created successfully"}
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("username", response.data)
 
-    def test_register_user_invalid_email(self):
-        data = {
-            "username": "testuser",
-            "email": "invalid-email",
-            "password": "validPassword123",
-        }
-        response = self.client.post(self.url, data, format="json")
+@pytest.mark.django_db
+def test_register_user_empty_username(api_client, url, clear_users):
+    data = {
+        "username": "",
+        "email": "valid.email@example.com",
+        "password": "validPassword123",
+    }
+    response = api_client.post(url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("email", response.data)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "username" in response.data
 
-    def test_register_user_short_password(self):
-        pass
-        data = {
-            "username": "testuser",
-            "email": "valid.email@example.com",
-            "password": "123",
-        }
-        response = self.client.post(self.url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("password", response.data)
+@pytest.mark.django_db
+def test_register_user_invalid_email(api_client, url, clear_users):
+    data = {
+        "username": "testuser",
+        "email": "invalid-email",
+        "password": "validPassword123",
+    }
+    response = api_client.post(url, data, format="json")
 
-    def tearDown(self):
-        User.objects.all().delete()
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "email" in response.data
+
+
+@pytest.mark.django_db
+def test_register_user_short_password(api_client, url, clear_users):
+    data = {
+        "username": "testuser",
+        "email": "valid.email@example.com",
+        "password": "123",
+    }
+    response = api_client.post(url, data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "password" in response.data

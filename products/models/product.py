@@ -36,3 +36,10 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-updated_at", "name"]
+
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["price"]),
+            models.Index(fields=["sell_price"]),
+        ]

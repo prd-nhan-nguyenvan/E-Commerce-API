@@ -9,7 +9,7 @@ SECRET_KEY = "django-insecure-!o=jk2#if_^7irn1&21k+eh!*_4%at+tembhwv^mn)8e!u24di
 
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "testserver"]
 
 # Application definition
 
@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "products",
     "search",
     "users",
+    "profiler",
 ]
 
 MIDDLEWARE = [

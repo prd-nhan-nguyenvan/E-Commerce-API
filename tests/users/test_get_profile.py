@@ -1,39 +1,29 @@
-from django.contrib.auth import get_user_model
-from django.urls import reverse
+import pytest
 from rest_framework import status
-from rest_framework.test import APITestCase
-
-from users.models import UserProfile
-
-User = get_user_model()
+from rest_framework.reverse import reverse
 
 
-class ProfileRetrieveTest(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email="testuser@example.com", username="testuser", password="testpassword"
-        )
-        self.client = self.client_class()
-        self.client.force_authenticate(user=self.user)
+@pytest.fixture
+def profile_url():
+    """Fixture for profile detail URL."""
+    return reverse("profile-detail")
 
-        self.url = reverse("profile-detail")
 
-    def test_retrieve_profile(self):
+@pytest.mark.django_db
+class TestProfileRetrieve:
+    def test_retrieve_profile(self, api_client, user, user_profile, profile_url):
         """Test retrieving the user's profile."""
-        response = self.client.get(self.url)
+        api_client.force_authenticate(user=user)
+        response = api_client.get(profile_url)
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["first_name"] == user_profile.first_name
+        assert response.data["last_name"] == user_profile.last_name
+        assert response.data["bio"] == user_profile.bio
+        assert response.data["phone_number"] == user_profile.phone_number
+        assert response.data["role"] == user.role
 
-        profile = UserProfile.objects.get(user=self.user)
-
-        self.assertEqual(response.data["first_name"], profile.first_name)
-        self.assertEqual(response.data["last_name"], profile.last_name)
-        self.assertEqual(response.data["bio"], profile.bio)
-        self.assertEqual(response.data["phone_number"], profile.phone_number)
-        self.assertEqual(response.data["role"], self.user.role)
-
-    def test_unauthenticated_user_cannot_access_profile(self):
-        self.client.logout()
-        response = self.client.get(self.url)
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    def test_unauthenticated_user_cannot_access_profile(self, api_client, profile_url):
+        """Test that an unauthenticated user cannot access the profile."""
+        response = api_client.get(profile_url)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

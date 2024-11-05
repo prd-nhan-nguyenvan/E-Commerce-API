@@ -1,106 +1,46 @@
+import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
-
-from authentication.models import CustomUser
 
 
-class ProductListTest(APITestCase):
-    def setUp(self):
-        self.admin_user = CustomUser.objects.create_superuser(
-            email="admintest@gmail.com",
-            username="adminuser",
-            password="adminpassword",
-        )
+@pytest.fixture
+def url():
+    return reverse("product-list-create")
 
-        self.client.force_authenticate(user=self.admin_user)
 
-        self.url = reverse("product-list-create")
+@pytest.mark.django_db
+def test_admin_can_create_product(api_client, admin_user, product_data, url):
+    data = product_data
+    api_client.force_authenticate(user=admin_user)
+    response = api_client.post(url, data)
 
-        self.category1 = self.client.post(
-            reverse("category-list-create"),
-            data={"name": "Category 1", "description": "Description 1"},
-        )
-        self.category2 = self.client.post(
-            reverse("category-list-create"),
-            data={"name": "Category 2", "description": "Description 2"},
-        )
-        self.client.post(
-            reverse("product-list-create"),
-            data={
-                "category": self.category1.data["id"],
-                "name": "Organic Extra Virgin Olive Oil",
-                "description": "Cold-pressed, organic olive oil with a rich and fruity flavor.",
-                "price": "15.99",
-                "sell_price": "14.99",
-                "on_sell": True,
-                "stock": 300,
-            },
-        )
-        self.client.post(
-            reverse("product-list-create"),
-            data={
-                "category": self.category2.data["id"],
-                "name": "Organic Coconut Oil",
-                "description": "Cold-pressed, organic coconut oil with a subtle coconut flavor.",
-                "price": "12.99",
-                "sell_price": "11.99",
-                "on_sell": False,
-                "stock": 200,
-            },
-        )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["name"] == data["name"]
+    assert response.data["description"] == data["description"]
+    assert response.data["price"] == data["price"]
+    assert response.data["sell_price"] == data["sell_price"]
+    assert response.data["category"] == data["category"]
 
-        self.client = self.client_class()
 
-    def test_admin_can_create_product(self):
-        """Test that an admin user can create a product."""
-        self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post(
-            self.url,
-            data={
-                "category": self.category1.data["id"],
-                "name": "Test Product",
-                "description": "Test Description",
-                "price": "9.99",
-                "sell_price": "8.99",
-                "on_sell": True,
-                "stock": 100,
-            },
-        )
+@pytest.mark.django_db
+def test_non_admin_cannot_create_product(api_client, regular_user, product_data, url):
+    data = product_data
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["name"], "Test Product")
+    api_client.force_authenticate(user=regular_user)
+    response = api_client.post(url, data)
 
-    def test_non_admin_cannot_create_product(self):
-        """Test that a non-admin user cannot create a product."""
-        regular_user = CustomUser.objects.create_user(
-            email="noadmin@gmail.com",
-            username="noadminuser",
-            password="noadminpassword",
-        )
-        self.client.force_authenticate(user=regular_user)
-        response = self.client.post(
-            self.url,
-            data={
-                "category": self.category1.data["id"],
-                "name": "Test Product",
-                "description": "Test Description",
-                "price": "9.99",
-                "sell_price": "8.99",
-                "on_sell": True,
-                "stock": 100,
-            },
-        )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_get_all_products(self):
-        """Test that an admin user can get the list of all products."""
-        self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        self.assertEqual(response.data["count"], 2)
-        self.assertEqual(response.data["results"][0]["name"], "Organic Coconut Oil")
-        self.assertEqual(
-            response.data["results"][1]["name"], "Organic Extra Virgin Olive Oil"
-        )
+@pytest.mark.django_db
+def test_get_all_products(api_client, admin_user, setup_products, url):
+
+    api_client.force_authenticate(user=admin_user)
+    response = api_client.get(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["count"] == 4
+    assert response.data["results"][0]["name"] == "Product 4"
+    assert response.data["results"][1]["name"] == "Product 3"
+    assert response.data["results"][2]["name"] == "Product 2"
+    assert response.data["results"][3]["name"] == "Product 1"

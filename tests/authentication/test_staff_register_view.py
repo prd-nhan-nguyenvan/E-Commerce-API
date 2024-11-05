@@ -1,94 +1,90 @@
-from django.contrib.auth import get_user_model
+import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
-
-from authentication.constants import ROLE_STAFF
-
-User = get_user_model()
 
 
-class CreateStaffViewTest(APITestCase):
-    def setUp(self):
-        # Create an admin user to authorize the request
-        self.admin_user = User.objects.create_superuser(
-            username="admin", email="admin@example.com", password="adminpass"
-        )
+@pytest.fixture
+def url():
+    return reverse("register_staff")
 
-        # URL for staff registration
-        self.url = reverse(
-            "register_staff"
-        )  # 'register_staff' should match the name in your urlpatterns
 
-        # Admin credentials to authenticate
-        self.client.force_authenticate(user=self.admin_user)
+@pytest.mark.django_db
+def test_register_user_success(api_client, url, clear_users, admin_user):
+    data = {
+        "username": "testuser",
+        "email": "testuser@example.com",
+        "password": "testpassword123",
+    }
 
-    def test_staff_registration_success(self):
-        # Test data for valid staff registration
-        data = {
-            "username": "staffuser",
-            "email": "staff@example.com",
-            "password": "Staff@123",
-        }
+    api_client.force_authenticate(user=admin_user)
 
-        response = self.client.post(self.url, data, format="json")
+    response = api_client.post(url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("message", response.data)
-        self.assertEqual(
-            response.data["message"], "Staff account created successfully."
-        )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["message"] == "Staff account created successfully."
 
-        # Verify that the user is created with the ROLE_STAFF role
-        user = User.objects.get(username="staffuser")
-        self.assertEqual(user.role, ROLE_STAFF)
 
-    def test_pass_is_too_common(self):
-        # Test data for valid staff registration
-        data = {
-            "username": "staffuser",
-            "email": "staff@example.com",
-            "password": "password123",
-        }
+@pytest.mark.django_db
+def test_register_user_empty_username(api_client, url, clear_users, admin_user):
+    data = {
+        "username": "",
+        "email": "valid.email@example.com",
+        "password": "validPassword123",
+    }
 
-        response = self.client.post(self.url, data, format="json")
+    api_client.force_authenticate(user=admin_user)
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("password", response.data)  # Che
+    response = api_client.post(url, data, format="json")
 
-    def test_password_too_short(self):
-        # Invalid data (missing email, invalid password)
-        data = {
-            "email": "staff@gmail.com",
-            "username": "staffuser",
-            "password": "123",  # Too short
-        }
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "username" in response.data
 
-        response = self.client.post(self.url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("password", response.data)  # Check for password error (too short)
+@pytest.mark.django_db
+def test_register_user_invalid_email(api_client, url, clear_users, admin_user):
+    data = {
+        "username": "testuser",
+        "email": "invalid-email",
+        "password": "validPassword123",
+    }
 
-    def test_staff_registration_unauthorized(self):
-        # Log out admin and use a normal user
-        self.client.logout()
+    api_client.force_authenticate(user=admin_user)
 
-        # Create a regular user
-        user = User.objects.create_user(
-            username="normaluser", email="user@example.com", password="userpass"
-        )
+    response = api_client.post(url, data, format="json")
 
-        # Force authenticate with the normal user
-        self.client.force_authenticate(user=user)
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "email" in response.data
 
-        # Attempt to register a staff account
-        data = {
-            "username": "staffuser",
-            "email": "staff@example.com",
-            "password": "password123",
-        }
 
-        response = self.client.post(self.url, data, format="json")
+@pytest.mark.django_db
+def test_register_user_short_password(api_client, url, clear_users, admin_user):
+    data = {
+        "username": "testuser",
+        "email": "valid.email@example.com",
+        "password": "123",
+    }
 
-        # Check that the normal user cannot create a staff account (unauthorized)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    api_client.force_authenticate(user=admin_user)
+
+    response = api_client.post(url, data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "password" in response.data
+
+
+@pytest.mark.django_db
+def test_register_user_without_admin_permission(api_client, url, clear_users, user):
+    data = {
+        "username": "testuser",
+        "email": "testuser@example.com",
+        "password": "testpassword123",
+    }
+
+    api_client.force_authenticate(user=user)
+
+    response = api_client.post(url, data, format="json")
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert (
+        response.data["detail"] == "You do not have permission to perform this action."
+    )

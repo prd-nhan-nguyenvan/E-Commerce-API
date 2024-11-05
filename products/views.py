@@ -110,7 +110,20 @@ class CategoryRetrieveBySlugView(generics.RetrieveAPIView):
 
 
 class ProductListCreateView(generics.ListCreateAPIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.select_related("category").only(
+        "id",
+        "category",
+        "name",
+        "slug",
+        "description",
+        "price",
+        "sell_price",
+        "on_sell",
+        "stock",
+        "image",
+        "created_at",
+        "updated_at",
+    )
     serializer_class = ProductSerializer
     parser_classes = [MultiPartParser, FormParser]
     pagination_class = LimitOffsetPagination
@@ -119,22 +132,45 @@ class ProductListCreateView(generics.ListCreateAPIView):
     ordering_fields = ["name", "price", "created_at"]
     search_fields = ["name", "description"]
 
+    default_limit = getattr(settings, "DEFAULT_LIMIT", 10)
+    default_offset = getattr(settings, "DEFAULT_OFFSET", 0)
+
     def get_permissions(self):
         if self.request.method == "GET":
             return [permissions.AllowAny()]
         return [IsAdminOrStaff()]
 
+    def get_queryset(self):
+        queryset = Product.objects.select_related("category").only(
+            "id", "name", "description", "price", "created_at", "category_id"
+        )
+
+        category = self.request.query_params.get("category")
+        price = self.request.query_params.get("price")
+        name = self.request.query_params.get("name")
+        description = self.request.query_params.get("description")
+
+        if category:
+            queryset = queryset.filter(category=category)
+        if price:
+            queryset = queryset.filter(price=price)
+        if name:
+            queryset = queryset.filter(name__icontains=name)
+        if description:
+            queryset = queryset.filter(description__icontains=description)
+
+        return queryset
+
+    def get_cache_key(self, request):
+        filters_data = request.query_params.dict()
+        limit = request.query_params.get("limit", self.default_limit)
+        offset = request.query_params.get("offset", self.default_offset)
+        cache_key = f"product_list_{limit}_{offset}_{filters_data}"
+        return cache_key
+
     @swagger_auto_schema(tags=["Products"])
     def get(self, request, *args, **kwargs):
-        default_limit = getattr(settings, "DEFAULT_LIMIT", 10)
-        default_offset = getattr(settings, "DEFAULT_OFFSET", 0)
-
-        limit = request.query_params.get("limit", default_limit)
-        offset = request.query_params.get("offset", default_offset)
-
-        filters_data = request.query_params.dict()
-        cache_key = f"product_list_{limit}_{offset}_{filters_data}"
-
+        cache_key = self.get_cache_key(request)
         cached_product_list = cache.get(cache_key)
 
         if cached_product_list:

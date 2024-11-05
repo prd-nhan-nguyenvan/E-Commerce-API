@@ -160,6 +160,9 @@ class UpdateRemoveCartItemView(APIView):
         )
 
         cart_item.delete()
+        cache_key = f"user_cart_{request.user.id}"
+        cache.delete(cache_key)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @swagger_auto_schema(
@@ -226,6 +229,8 @@ class UpdateRemoveCartItemView(APIView):
         if quantity != cart_item.quantity:
             cart_item.quantity = quantity
             cart_item.save()
+        cache_key = f"user_cart_{request.user.id}"
+        cache.delete(cache_key)
 
         return Response(
             {

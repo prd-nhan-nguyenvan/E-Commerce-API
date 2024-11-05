@@ -2,6 +2,9 @@ from django.urls import path
 
 from .views import (
     AddOrderItemView,
+    AdminOrderListView,
+    AdminOrderRetrieveUpdateDestroyView,
+    AdminOrderStatusUpdateView,
     OrderListCreateView,
     OrderRetrieveUpdateDestroyView,
     OrderStatusUpdateView,
@@ -21,5 +24,16 @@ urlpatterns = [
         "<int:order_id>/remove/<int:product_id>",
         RemoveFromOrderView.as_view(),
         name="add-order-item",
+    ),
+    path("admin/lists/", AdminOrderListView.as_view(), name="admin-order-list"),
+    path(
+        "admin/lists/<int:pk>/",
+        AdminOrderRetrieveUpdateDestroyView.as_view(),
+        name="admin-order-detail",
+    ),
+    path(
+        "admin/lists/<int:order_id>/update-status/",
+        AdminOrderStatusUpdateView.as_view(),
+        name="admin-update-order-status",
     ),
 ]

@@ -397,6 +397,93 @@ class ESSearchProductView(APIView):
         return Response(result, status=status.HTTP_200_OK)
 
 
+class MoreLikeThisProductView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(
+        tags=["Products"],
+        manual_parameters=[
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                description="Limit for pagination",
+            ),
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Successful product search response",
+                schema=ProductSearchResponseSerializer(),
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Search query is required.",
+            ),
+        },
+    )
+    def get(self, request, *args, **kwargs):
+        product_id = self.kwargs["product_id"]
+        limit = int(request.query_params.get("limit", 10))
+
+        cache_key = f"more_like_this_products_{product_id}_{limit}"
+        cached_result = cache.get(cache_key)
+
+        if cached_result:
+            return Response(cached_result, status=status.HTTP_200_OK)
+
+        search = ProductDocument.search().query(
+            {
+                "more_like_this": {
+                    "fields": ["name", "description"],  # Fields to compare
+                    "like": [
+                        {
+                            "_index": "products",
+                            "_id": product_id,
+                        }
+                    ],
+                    "min_term_freq": 1,
+                    "max_query_terms": 12,
+                }
+            }
+        )
+
+        search = search[:limit]
+
+        response = search.execute()
+
+        base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
+
+        products = [
+            {
+                "id": hit.to_dict().get("id"),
+                "category": hit.to_dict().get("category", {}).get("id"),
+                "name": hit.to_dict().get("name"),
+                "slug": hit.to_dict().get("slug"),
+                "description": hit.to_dict().get("description"),
+                "price": hit.to_dict().get("price"),
+                "sell_price": hit.to_dict().get("sell_price"),
+                "on_sell": hit.to_dict().get("on_sell"),
+                "stock": hit.to_dict().get("stock"),
+                "image": (
+                    f"{base_url}{hit.to_dict().get('image')}"
+                    if hit.to_dict().get("image")
+                    else None
+                ),
+                "created_at": hit.to_dict().get("created_at"),
+                "updated_at": hit.to_dict().get("updated_at"),
+            }
+            for hit in response.hits
+        ]
+
+        result = {
+            "count": len(products),
+            "results": products,
+        }
+
+        cache.set(cache_key, result, timeout=60 * 60)
+
+        return Response(result, status=status.HTTP_200_OK)
+
+
 class ReviewCreateView(generics.CreateAPIView):
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticated]

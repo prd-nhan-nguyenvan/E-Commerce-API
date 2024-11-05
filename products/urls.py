@@ -6,6 +6,7 @@ from .views import (
     CategoryRetrieveBySlugView,
     CategoryRetrieveUpdateDestroyView,
     ESSearchProductView,
+    MoreLikeThisProductView,
     ProductListCreateView,
     ProductRetrieveBySlugView,
     ProductRetrieveUpdateDestroyView,
@@ -42,6 +43,11 @@ urlpatterns = [
         name="bulk-import-products",
     ),
     path("products/search/", ESSearchProductView.as_view(), name="product-search"),
+    path(
+        "products/<int:product_id>/similar/",
+        MoreLikeThisProductView.as_view(),
+        name="similar-products",
+    ),
     path(
         "products/<int:product_id>/reviews/",
         ProductReviewListView.as_view(),

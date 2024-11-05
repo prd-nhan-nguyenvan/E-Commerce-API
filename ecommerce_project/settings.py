@@ -15,24 +15,22 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 INSTALLED_APPS = [
     "celery",
-    "django.contrib.admin",
+    "corsheaders",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_elasticsearch_dsl",
     "drf_yasg",
-    "rest_framework",
-    "rest_framework.authtoken",
-    "corsheaders",
     "oauth2_provider",
-    "users",
+    "rest_framework",
+    # internal apps
     "authentication",
+    "carts",
     "orders",
     "products",
-    "carts",
     "search",
+    "users",
 ]
 
 MIDDLEWARE = [
@@ -42,7 +40,6 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 

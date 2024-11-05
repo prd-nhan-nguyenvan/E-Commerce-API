@@ -1,59 +1,53 @@
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
+import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
 
-from carts.models import Cart
 from carts.serializers import CartSerializer
 
-User = get_user_model()
+
+@pytest.fixture
+def url():
+    return reverse("get-cart")
 
 
-class GetCartViewTest(APITestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            email="testuser@gmail.com", username="testuser", password="testpass"
-        )
-        self.cart = Cart.objects.create(user=self.user)
-        self.url = reverse("get-cart")
+@pytest.mark.django_db
+class TestGetCartView:
+    def test_get_cart_from_cache(self, api_client, user, cart, url):
+        with patch("django.core.cache.cache.get") as mock_cache_get, patch(
+            "django.core.cache.cache.set"
+        ):
 
-    @patch("django.core.cache.cache.get")
-    @patch("django.core.cache.cache.set")
-    def test_get_cart_from_cache(self, mock_cache_set, mock_cache_get):
-        mock_cache_get.return_value = self.cart
+            serializer = CartSerializer(cart)
+            mock_cache_get.return_value = serializer.data
+            api_client.force_authenticate(user=user)
 
-        self.client.force_authenticate(user=self.user)
+            response = api_client.get(url)
 
-        response = self.client.get(self.url)
+            assert response.status_code == status.HTTP_200_OK
+            mock_cache_get.assert_called_with(f"user_cart_{user.id}")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+            assert response.data == serializer.data
 
-        mock_cache_get.assert_called_with(f"user_cart_{self.user.id}")
+    def test_get_cart_from_db_and_cache(self, api_client, user, cart, url):
+        with patch("django.core.cache.cache.get") as mock_cache_get, patch(
+            "django.core.cache.cache.set"
+        ) as mock_cache_set:
 
-        serializer = CartSerializer(data=self.cart)
-        serializer.is_valid()
-        self.assertEqual(response.data, serializer.data)
+            mock_cache_get.return_value = None
+            api_client.force_authenticate(user=user)
 
-    @patch("django.core.cache.cache.get")
-    @patch("django.core.cache.cache.set")
-    def test_get_cart_from_db_and_cache(self, mock_cache_set, mock_cache_get):
-        mock_cache_get.return_value = None
+            response = api_client.get(url)
 
-        self.client.force_authenticate(user=self.user)
+            assert response.status_code == status.HTTP_200_OK
+            mock_cache_set.assert_called_with(
+                f"user_cart_{user.id}", response.data, timeout=60 * 5
+            )
 
-        response = self.client.get(self.url)
+            serializer = CartSerializer(cart)
+            assert response.data == serializer.data
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        mock_cache_set.assert_called_with(
-            f"user_cart_{self.user.id}", (response.data), timeout=60 * 5
-        )
-
-        serializer = CartSerializer(self.cart)
-        self.assertEqual(response.data, serializer.data)
-
-    def test_get_cart_unauthenticated(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+    def test_get_cart_unauthenticated(self, api_client, url):
+        response = api_client.get(url)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

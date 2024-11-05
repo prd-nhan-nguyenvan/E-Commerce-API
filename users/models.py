@@ -22,5 +22,7 @@ class UserProfile(models.Model):
     phone_number = models.CharField(max_length=15, blank=True)
     address = models.TextField(blank=True)
 
+    objects = models.Manager()
+
     def __str__(self):
-        return f"{self.user.email}'s Profile"
+        return f"{self.user}'s Profile"

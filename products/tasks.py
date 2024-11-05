@@ -30,6 +30,9 @@ def bulk_import_products(product_data_list):
 
             # Generate a unique slug
             slug = slugify(row["name"])
+            # handle if too long
+            if len(slug) > 50:
+                slug = slug[:50]
             counter = 1
             original_slug = slug
             while Product.objects.filter(slug=slug).exists() or any(

@@ -11,7 +11,6 @@ User = get_user_model()
 
 
 class OrderListCreateViewTestCase(APITestCase):
-
     def setUp(self):
 
         self.user = User.objects.create_user(

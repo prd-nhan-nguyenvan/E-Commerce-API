@@ -11,7 +11,6 @@ User = get_user_model()
 
 
 class LoginViewTestCase(APITestCase):
-
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(

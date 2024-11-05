@@ -17,7 +17,6 @@ expires = timezone.now() + timedelta(days=1)  # Set to 1 day from now
 
 
 class LogoutViewTests(APITestCase):
-
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create_user(

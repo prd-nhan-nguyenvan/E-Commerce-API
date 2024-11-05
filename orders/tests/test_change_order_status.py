@@ -11,7 +11,6 @@ User = get_user_model()
 
 
 class ChangeOrderStatusTestCase(APITestCase):
-
     def setUp(self):
 
         self.user = User.objects.create_user(

@@ -22,6 +22,8 @@ class Order(models.Model):
     address = models.TextField()
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
+    objects = models.Manager()
+
     def can_change_status(self, new_status):
         if self.status == "pd" and new_status in ["sb", "cn"]:
             return True
@@ -54,6 +56,8 @@ class OrderItem(models.Model):
     )  # Adjust 'your_app' to the actual app name
     quantity = models.PositiveIntegerField()
     price_at_purchase = models.DecimalField(max_digits=10, decimal_places=2)
+
+    objects = models.Manager()
 
     class Meta:
         unique_together = ["order", "product"]

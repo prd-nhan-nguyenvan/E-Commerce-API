@@ -32,57 +32,58 @@ class LoginView(APIView):
     )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if serializer.is_valid():
-            email = serializer.validated_data.get("email")
-            password = serializer.validated_data.get("password")
-
-            user = authenticate(email=email, password=password)
-            if not user:
-                return Response(
-                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            login(request, user)
-
-            application = Application.objects.get(client_id=settings.OAUTH2_CLIENT_ID)
-            expires = now() + timedelta(
-                seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
-            )
-            access_token = AccessToken.objects.create(
-                user=user,
-                application=application,
-                token=custom_token_generator(),
-                expires=expires,
-                scope="read write",
-            )
-            refresh_token = RefreshToken.objects.create(
-                user=user,
-                token=custom_token_generator(),
-                access_token=access_token,
-                application=application,
+        user = self.authenticate_user(serializer.validated_data)
+        if not user:
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-            response_data = LoginResponseSerializer(
-                data={
-                    "access_token": access_token.token,
-                    "expires_in": settings.OAUTH2_PROVIDER[
-                        "ACCESS_TOKEN_EXPIRE_SECONDS"
-                    ],
-                    "token_type": "Bearer",
-                    "scope": "read write",
-                    "refresh_token": refresh_token.token,
-                }
-            )
+        login(request, user)
+        access_token, refresh_token = self.generate_tokens(user)
+        response_data = self.build_response_data(access_token, refresh_token)
 
-            if response_data.is_valid():
-                return Response(data=response_data.data, status=status.HTTP_201_CREATED)
-            else:
-                return Response(
-                    response_data.errors, status=status.HTTP_400_BAD_REQUEST
-                )
+        return Response(data=response_data, status=status.HTTP_201_CREATED)
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def authenticate_user(self, validated_data):
+        email = validated_data.get("email")
+        password = validated_data.get("password")
+        return authenticate(email=email, password=password)
+
+    def generate_tokens(self, user):
+        application = Application.objects.get(client_id=settings.OAUTH2_CLIENT_ID)
+        expires = now() + timedelta(
+            seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
+        )
+        access_token = AccessToken.objects.create(
+            user=user,
+            application=application,
+            token=custom_token_generator(),
+            expires=expires,
+            scope="read write",
+        )
+        refresh_token = RefreshToken.objects.create(
+            user=user,
+            token=custom_token_generator(),
+            access_token=access_token,
+            application=application,
+        )
+        return access_token, refresh_token
+
+    def build_response_data(self, access_token, refresh_token):
+        response_serializer = LoginResponseSerializer(
+            data={
+                "access_token": access_token.token,
+                "expires_in": settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"],
+                "token_type": "Bearer",
+                "scope": access_token.scope,
+                "refresh_token": refresh_token.token,
+            }
+        )
+        response_serializer.is_valid(raise_exception=True)
+        return response_serializer.data
 
 
 class CustomTokenRefreshView(APIView):
@@ -94,21 +95,10 @@ class CustomTokenRefreshView(APIView):
 
         if serializer.is_valid():
             refresh_token_value = serializer.validated_data.get("refresh")
-            if not refresh_token_value:
-                return Response(
-                    {"detail": "Refresh token is required."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
 
             try:
 
                 refresh_token = RefreshToken.objects.get(token=refresh_token_value)
-
-                if not refresh_token.access_token:
-                    return Response(
-                        {"detail": "Invalid refresh token."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
 
                 expires = now() + timedelta(
                     seconds=settings.OAUTH2_PROVIDER["ACCESS_TOKEN_EXPIRE_SECONDS"]
@@ -133,14 +123,9 @@ class CustomTokenRefreshView(APIView):
 
                 return Response(
                     response_data,
-                    status=status.HTTP_200_OK,
+                    status=status.HTTP_201_CREATED,
                 )
 
-            except RefreshToken.DoesNotExist:
-                return Response(
-                    {"detail": "Invalid refresh token."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             except Exception as e:
                 return Response(
                     {"detail": str(e)},
@@ -196,7 +181,7 @@ class ChangePasswordView(generics.UpdateAPIView):
         serializer.save()
 
         return Response(
-            {"message": "Password updated successfully"}, status=status.HTTP_200_OK
+            {"message": "Password updated successfully."}, status=status.HTTP_200_OK
         )
 
     @swagger_auto_schema(request_body=ChangePasswordSerializer)
@@ -220,12 +205,6 @@ class LogoutView(APIView):
 
             access_token.delete()
 
-            return Response(
-                {"message": "Successfully logged out"}, status=status.HTTP_200_OK
-            )
-        except AccessToken.DoesNotExist:
-            return Response(
-                {"error": "Invalid access token"}, status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

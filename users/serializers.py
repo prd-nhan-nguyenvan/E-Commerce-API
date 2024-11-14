@@ -8,6 +8,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source="user.role", read_only=True)
     email = serializers.EmailField(source="user.email", read_only=True)
     username = serializers.CharField(source="user.username", read_only=True)
+    first_name = serializers.CharField(
+        required=True, allow_null=False, allow_blank=False
+    )
+    last_name = serializers.CharField(
+        required=True, allow_null=False, allow_blank=False
+    )
+    bio = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         model = UserProfile

@@ -14,9 +14,4 @@ class IsStaff(permissions.BasePermission):
         return request.user.is_authenticated and request.user.role == ROLE_STAFF
 
 
-class IsAdminOrStaff(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.role in [
-            ROLE_ADMIN,
-            ROLE_STAFF,
-        ]
+IsAdminOrStaff = IsAdmin | IsStaff

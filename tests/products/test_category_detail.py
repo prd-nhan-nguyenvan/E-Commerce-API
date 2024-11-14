@@ -1,53 +1,55 @@
+import pytest
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase
 
-from authentication.models import CustomUser
 from products.models import Category
 
 
-class CategoryDetailTest(APITestCase):
-    def setUp(self):
-        self.category = Category.objects.create(name="Test Category")
-        self.url = reverse("category-detail", args=[self.category.pk])
-        self.data = {"name": "New Category"}
+@pytest.fixture
+def category_url(category):
+    """Fixture to generate the URL for the category detail."""
+    return reverse("category-detail", args=[category.pk])
 
-        self.admin_user = CustomUser.objects.create_superuser(
-            email="admintest@gmail.com",
-            username="adminuser",
-            password="adminpassword",
-        )
 
-        # add some categories
-        self.client.force_authenticate(user=self.admin_user)
+@pytest.mark.django_db
+def test_get_category_detail(api_client, admin_user, category, category_url):
+    api_client.force_authenticate(user=admin_user)
+    response = api_client.get(category_url)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == category.name
 
-    def test_get(self):
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], self.category.name)
 
-    def test_put(self):
-        response = self.client.put(self.url, self.data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], self.data["name"])
+@pytest.mark.django_db
+def test_put_category_detail(api_client, admin_user, category_url):
+    api_client.force_authenticate(user=admin_user)
+    data = {"name": "New Category"}
+    response = api_client.put(category_url, data)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == data["name"]
 
-    def test_patch(self):
-        response = self.client.patch(self.url, self.data)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], self.data["name"])
 
-    def test_delete(self):
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(Category.objects.count(), 0)
+@pytest.mark.django_db
+def test_patch_category_detail(api_client, admin_user, category_url):
+    api_client.force_authenticate(user=admin_user)
+    data = {"name": "New Category"}
+    response = api_client.patch(category_url, data)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["name"] == data["name"]
 
-    def test_non_admin_cannot_delete(self):
-        regular_user = CustomUser.objects.create_user(
-            email="noadmin@gmail.com",
-            username="noadminuser",
-            password="noadminpassword",
-        )
-        self.client.force_authenticate(user=regular_user)
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(Category.objects.count(), 1)
+
+@pytest.mark.django_db
+def test_delete_category_detail(api_client, admin_user, category, category_url):
+    api_client.force_authenticate(user=admin_user)
+    response = api_client.delete(category_url)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
+    assert Category.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_non_admin_cannot_delete_category(
+    api_client, regular_user, category, category_url
+):
+    api_client.force_authenticate(user=regular_user)
+    response = api_client.delete(category_url)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert Category.objects.count() == 1

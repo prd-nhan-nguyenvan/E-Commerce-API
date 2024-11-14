@@ -1,49 +1,66 @@
-# tests/test_user_detail.py in your users app
-
+import pytest
+from django.urls import reverse
 from rest_framework import status
-from rest_framework.reverse import reverse
-from rest_framework.test import APITestCase
-
-from authentication.models import CustomUser
 
 
-class UserDetailTest(APITestCase):
-    def setUp(self):
-        self.admin_user = CustomUser.objects.create_user(
-            email="admin@example.com",
-            username="adminuser",
-            password="adminpassword",
-            role="admin",
-        )
-        self.regular_user = CustomUser.objects.create_user(
-            email="user@example.com",
-            username="regularuser",
-            password="userpassword",
-            role="user",
-        )
-        self.client.force_authenticate(user=self.admin_user)
-        self.url = reverse("user-detail", [self.regular_user.id])
+@pytest.fixture
+def url(user):
+    return reverse("user-detail", args=[user.id])
 
-    def test_get_user_detail(self):
+
+@pytest.mark.django_db
+class TestUserDetail:
+    def test_get_user_detail(self, api_client, admin_user, user, url):
         """Test getting user details."""
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["email"], self.regular_user.email)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.get(url)
 
-    def test_block_user(self):
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["email"] == user.email
+
+    def test_non_admin_cannot_get_user_detail(self, api_client, user, url):
+        api_client.force_authenticate(user=user)
+        response = api_client.get(url)
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_block_user(self, api_client, admin_user, user, url):
         """Test blocking a user."""
-        response = self.client.patch(self.url, data={"action": "block"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.regular_user.refresh_from_db()
-        self.assertFalse(self.regular_user.is_active)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(url, data={"action": "block"})
 
-    def test_unblock_user(self):
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert not user.is_active
+
+    def test_unauthenticated_user_cannot_block_user(self, api_client, user, url):
+        api_client.logout()
+
+        response = api_client.patch(url, data={"action": "block"})
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_non_admin_cannot_block_user(self, api_client, user, url):
+        api_client.force_authenticate(user=user)
+        response = api_client.patch(url, data={"action": "block"})
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_unblock_user(self, api_client, admin_user, user, url):
         """Test unblocking a user."""
         # First block the user
-        self.regular_user.is_blocked = True
-        self.regular_user.save()
+        user.is_blocked = True
+        user.save()
 
-        response = self.client.patch(self.url, data={"action": "unblock"})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.regular_user.refresh_from_db()
-        self.assertTrue(self.regular_user.is_active)
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(url, data={"action": "unblock"})
+
+        assert response.status_code == status.HTTP_200_OK
+        user.refresh_from_db()
+        assert user.is_active
+
+    def test_non_admin_cannot_unblock_user(self, api_client, user, url):
+        api_client.force_authenticate(user=user)
+        response = api_client.patch(url, data={"action": "unblock"})
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN

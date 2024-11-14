@@ -1,73 +1,51 @@
-from uuid import uuid4
-
-from django.contrib.auth import get_user_model
+import pytest
 from django.urls import reverse
-from oauth2_provider.models import AccessToken, Application, RefreshToken
 from rest_framework import status
-from rest_framework.test import APITestCase
-
-User = get_user_model()
 
 
-class CustomTokenRefreshViewTest(APITestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.user = cls.create_user()
-        cls.application = cls.create_application()
-        cls.refresh_token = RefreshToken.objects.create(
-            token="valid_refresh_token",
-            user=cls.user,
-            application=cls.application,
-        )
+@pytest.fixture
+def url():
+    return reverse("token_refresh")
 
-        cls.url = reverse("token_refresh")
 
-    @classmethod
-    def create_user(cls):
-        username = f"testuser-{uuid4()}"
-        return get_user_model().objects.create_user(
-            username=username,
-            email=f"{username}@example.com",
-            password="testpassword",
-        )
+@pytest.mark.django_db
+def test_token_refresh(api_client, url, user, application):
+    data = {"email": user.email, "password": "testpassword"}
+    response = api_client.post(reverse("token_obtain_pair"), data, format="json")
+    data = {"refresh": response.data["refresh_token"]}
 
-    @classmethod
-    def create_application(cls):
-        from oauth2_provider.models import Application
+    response = api_client.post(url, data, format="json")
 
-        return Application.objects.create(
-            user=cls.create_user(),
-            client_type=Application.CLIENT_CONFIDENTIAL,
-            authorization_grant_type=Application.GRANT_PASSWORD,
-            name="Test Application",
-        )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert "access_token" in response.data
+    assert "refresh_token" in response.data
 
-    def test_token_refresh_missing_refresh_token(self):
-        data = {}
 
-        response = self.client.post(self.url, data, format="json")
+@pytest.mark.django_db
+def test_token_refresh_missing_refresh_token(api_client, url):
+    data = {}
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("refresh", response.data)
+    response = api_client.post(url, data, format="json")
 
-    def test_token_refresh_invalid_refresh_token(self):
-        data = {"refresh": "invalid_refresh_token"}
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "refresh" in response.data
 
-        response = self.client.post(self.url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["detail"], "Invalid refresh token.")
+@pytest.mark.django_db
+def test_token_refresh_invalid_refresh_token(api_client, url):
+    data = {"refresh": "invalid_refresh_token"}
 
-    def test_token_refresh_serializer_error(self):
-        data = {"refresh": None}
+    response = api_client.post(url, data, format="json")
 
-        response = self.client.post(self.url, data, format="json")
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data["detail"] == "RefreshToken matching query does not exist."
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("refresh", response.data)
 
-    def tearDown(self):
-        User.objects.all().delete()
-        Application.objects.all().delete()
-        AccessToken.objects.all().delete()
-        RefreshToken.objects.all().delete()
+@pytest.mark.django_db
+def test_token_refresh_serializer_error(api_client, url):
+    data = {"refresh": None}
+
+    response = api_client.post(url, data, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "refresh" in response.data

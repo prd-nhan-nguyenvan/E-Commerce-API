@@ -21,6 +21,7 @@ from authentication.serializers import (
     RefreshTokenSerializer,
     RegisterSerializer,
 )
+from users.signals import create_new_user_signal
 
 
 class LoginView(APIView):
@@ -144,6 +145,9 @@ class RegisterView(CreateAPIView):
         serializer = self.get_serializer(data=request.data, role=ROLE_USER)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        create_new_user_signal.send(sender=self.__class__, user=serializer.instance)
+
         return Response(
             {"message": "User created successfully"}, status=status.HTTP_201_CREATED
         )

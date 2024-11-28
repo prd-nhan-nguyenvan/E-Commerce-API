@@ -69,8 +69,8 @@ This is project to practice Django Rest Framework
 ## Folder structure
 
 ```bash
-ecommerce_project/
-├── ecommerce_project/    # Main project folder (settings, URLs)
+core/
+├── core/    # Main project folder (settings, URLs)
 │   ├── __init__.py
 │   ├── settings.py
 │   ├── urls.py

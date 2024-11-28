@@ -8,7 +8,6 @@ product_index = Index("products")
 
 @registry.register_document
 class ProductDocument(Document):
-    # Define the 'category' field using fields.ObjectField to include related data
     category = fields.ObjectField(
         properties={
             "id": fields.IntegerField(),
@@ -25,8 +24,7 @@ class ProductDocument(Document):
         }
 
     class Django:
-        model = Product  # The model associated with this Document
-        # Fields of the model to index
+        model = Product
         fields = [
             "id",
             "name",

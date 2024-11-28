@@ -4,23 +4,24 @@ import requests
 from celery import shared_task
 from django.core.files.base import ContentFile
 from django.template.defaultfilters import slugify
+from elasticsearch.exceptions import NotFoundError
 
-from .helpers import invalidate_product_cache
-from .models import Category, Product
+from products.documents import ProductDocument
+from products.helpers import invalidate_product_cache
+from products.models import Category, Product
 
-# Get a logger instance
 logger = logging.getLogger(__name__)
 
 
 @shared_task
 def bulk_import_products(product_data_list):
     products = []
-    categories_cache = {}  # Cache to avoid repeated database lookups for categories
-    failed_imports = []  # To track failed imports
+    categories_cache = {}
+    failed_imports = []
 
     for row in product_data_list:
         try:
-            # Check if category already exists in cache
+
             category_name = row["category_name"]
             category = (
                 categories_cache.get(category_name)
@@ -28,9 +29,8 @@ def bulk_import_products(product_data_list):
             )
             categories_cache[category_name] = category
 
-            # Generate a unique slug
             slug = slugify(row["name"])
-            # handle if too long
+
             if len(slug) > 50:
                 slug = slug[:50]
             counter = 1
@@ -41,7 +41,6 @@ def bulk_import_products(product_data_list):
                 counter += 1
                 slug = f"{original_slug}_{counter}"
 
-            # Create a new product instance
             product = Product(
                 name=row["name"],
                 description=row.get("description", ""),
@@ -53,7 +52,6 @@ def bulk_import_products(product_data_list):
                 slug=slug,
             )
 
-            # Image handling
             if "image_url" in row and row["image_url"]:
                 try:
                     image_response = requests.get(row["image_url"], timeout=10)
@@ -74,14 +72,11 @@ def bulk_import_products(product_data_list):
 
         except Exception as e:
             logger.error(f"Error processing product {row['name']}: {e}")
-            failed_imports.append(row)  # Store the failed row for reference
+            failed_imports.append(row)
 
-    # Bulk create products
     if products:
         try:
-            Product.objects.bulk_create(
-                products, batch_size=100
-            )  # Adjust batch size as needed
+            Product.objects.bulk_create(products, batch_size=100)
             logger.info(f"Successfully imported {len(products)} products.")
             invalidate_product_cache()
         except Exception as e:
@@ -93,3 +88,40 @@ def bulk_import_products(product_data_list):
         )
 
     return len(products), len(failed_imports)
+
+
+@shared_task
+def index_product_task(product_id):
+    product = Product.objects.get(id=product_id)
+    category = product.category
+
+    category_data = {
+        "id": category.id,
+        "name": category.name,
+        "slug": category.slug,
+    }
+
+    product_doc = ProductDocument(
+        meta={"id": product.id},
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        category=category_data,
+    )
+
+    product_doc.save()
+
+    return f"Product {product_id} indexed successfully in Elasticsearch"
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
+def delete_product_from_es(self, product_id):
+    try:
+        product_doc = ProductDocument.get(id=product_id)
+        product_doc.delete()
+        return f"Product {product_id} deleted from Elasticsearch."
+    except NotFoundError:
+        return f"Product {product_id} not found in Elasticsearch."
+    except Exception as exc:
+
+        raise self.retry(exc=exc)

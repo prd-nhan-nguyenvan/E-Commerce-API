@@ -38,6 +38,23 @@ class TestProductDetail:
         assert response.data["name"] == data["name"]
         assert response.data["description"] == data["description"]
 
+    def test_invalid_put(self, api_client, url, product, admin_user):
+        data = {"price": -100}
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.put(url, data)
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "error" in response.data
+
+    def test_patch(self, api_client, url, product, admin_user):
+        data = {"name": "Updated name"}
+        api_client.force_authenticate(user=admin_user)
+        response = api_client.patch(url, data)
+
+        assert response.status_code == status.HTTP_200_OK
+        product.refresh_from_db()
+        assert product.name == "Updated name"
+
     def test_delete(self, api_client, url, product, admin_user):
         api_client.force_authenticate(user=admin_user)
         response = api_client.delete(url)

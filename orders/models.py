@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 
+from authentication.models import CustomUser
 from products.models import Product
 
 
@@ -15,7 +16,9 @@ class Order(models.Model):
         ("cn", "Canceled"),
     ]
 
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user: CustomUser = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE
+    )
     status = models.CharField(max_length=2, choices=STATUS_CHOICES, default="pd")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

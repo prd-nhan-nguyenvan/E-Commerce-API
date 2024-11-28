@@ -68,6 +68,7 @@ vine = "^5.1.0"
 wcwidth = "^0.2.13"
 django-celery-beat = "^2.7.0"
 django-celery-results = "^2.5.1"
+icalendar = "^6.0.1"
 
 
 [tool.poetry.group.dev.dependencies]

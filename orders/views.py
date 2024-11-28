@@ -7,12 +7,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from authentication.permissions import IsAdminOrStaff
+
 from .models import Order, OrderItem
 from .serializers import (
     AddOrderItemSerializer,
     OrderSerializer,
     OrderStatusUpdateSerializer,
 )
+from .tasks import send_ics
 
 
 class OrderListCreateView(generics.ListCreateAPIView):
@@ -54,7 +56,10 @@ class OrderListCreateView(generics.ListCreateAPIView):
         },
     )
     def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
+
+        responses = super().post(request, *args, **kwargs)
+        send_ics.delay(sender=None)
+        return responses
 
 
 class OrderRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):

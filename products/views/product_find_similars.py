@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.core.cache import cache
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -10,6 +9,7 @@ from rest_framework.views import APIView
 
 from products.documents import ProductDocument
 from products.serializers import ProductSearchResponseSerializer
+from products.utils import ESHelper
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +20,6 @@ class SimilarProductView(APIView):
     @swagger_auto_schema(
         tags=["Products"],
         manual_parameters=[
-            openapi.Parameter(
-                "product_id",
-                openapi.IN_PATH,
-                type=openapi.TYPE_INTEGER,
-                description="Product ID to find similar products.",
-            ),
             openapi.Parameter(
                 "limit",
                 openapi.IN_QUERY,
@@ -86,34 +80,10 @@ class SimilarProductView(APIView):
 
         response = search.execute()
 
-        # Format results
-        base_url = getattr(settings, "BASE_URL", "http://localhost:8000")
-        products = [
-            {
-                "id": hit.to_dict().get("id"),
-                "category": hit.to_dict().get("category", {}).get("id"),
-                "name": hit.to_dict().get("name"),
-                "slug": hit.to_dict().get("slug"),
-                "description": hit.to_dict().get("description"),
-                "price": hit.to_dict().get("price"),
-                "sell_price": hit.to_dict().get("sell_price"),
-                "on_sell": hit.to_dict().get("on_sell"),
-                "stock": hit.to_dict().get("stock"),
-                "image": (
-                    f"{base_url}{hit.to_dict().get('image')}"
-                    if hit.to_dict().get("image")
-                    else None
-                ),
-                "created_at": hit.to_dict().get("created_at"),
-                "updated_at": hit.to_dict().get("updated_at"),
-            }
-            for hit in response.hits
-        ]
+        result = ESHelper._format_search_results(response, limit=limit)
 
-        result = {
-            "count": len(products),
-            "results": products,
-        }
+        result.pop("next", None)
+        result.pop("previous", None)
 
         cache.set(cache_key, result, timeout=60 * 60)  # Cache for 1 hour
 

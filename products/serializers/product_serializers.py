@@ -1,18 +1,6 @@
 from rest_framework import serializers
 
-from .models import Category, Product, Review
-
-
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = [
-            "id",
-            "name",
-            "slug",
-            "description",
-        ]
-        read_only_fields = ["id", "slug"]
+from products.models import Product
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -74,30 +62,3 @@ class ProductSerializer(serializers.ModelSerializer):
                 )
 
         return data
-
-
-class ReviewSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Review
-        fields = [
-            "id",
-            "product",
-            "user",
-            "rating",
-            "comment",
-            "created_at",
-            "updated_at",
-        ]
-        read_only_fields = ["user", "created_at", "updated_at"]
-
-    def validate_rating(self, value):
-        if value < 1 or value > 5:
-            raise serializers.ValidationError("Rating must be between 1 and 5.")
-        return value
-
-
-class ProductSearchResponseSerializer(serializers.Serializer):
-    count = serializers.IntegerField()
-    next = serializers.CharField(allow_null=True, required=False)
-    previous = serializers.CharField(allow_null=True, required=False)
-    results = ProductSerializer(many=True)

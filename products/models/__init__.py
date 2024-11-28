@@ -1,3 +1,3 @@
 from .category import Category
-from .product import Product, upload_to
+from .product import Product
 from .review import Review

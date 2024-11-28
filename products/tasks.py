@@ -7,8 +7,8 @@ from django.template.defaultfilters import slugify
 from elasticsearch.exceptions import NotFoundError
 
 from products.documents import ProductDocument
-from products.helpers import invalidate_product_cache
 from products.models import Category, Product
+from products.utils import invalidate_product_cache
 
 logger = logging.getLogger(__name__)
 

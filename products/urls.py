@@ -5,13 +5,13 @@ from products.views import (
     CategoryListCreateView,
     CategoryRetrieveBySlugView,
     CategoryRetrieveUpdateDestroyView,
-    ESSearchProductView,
-    MoreLikeThisProductView,
+    ProductESSearchView,
     ProductListCreateView,
     ProductRetrieveBySlugView,
     ProductRetrieveUpdateDestroyView,
     ProductReviewListView,
     ReviewCreateView,
+    SimilarProductView,
 )
 
 urlpatterns = [
@@ -42,10 +42,10 @@ urlpatterns = [
         BulkImportProductView.as_view(),
         name="bulk-import-products",
     ),
-    path("products/search/", ESSearchProductView.as_view(), name="product-search"),
+    path("products/search/", ProductESSearchView.as_view(), name="product-search"),
     path(
         "products/<int:product_id>/similar/",
-        MoreLikeThisProductView.as_view(),
+        SimilarProductView.as_view(),
         name="similar-products",
     ),
     path(

@@ -26,7 +26,6 @@ urlpatterns = [
     path("api/users/", include("users.urls")),
     path("api/carts/", include("carts.urls")),
     path("api/orders/", include("orders.urls")),
-    path("api/search/", include("search.urls")),
     path(
         "swagger<format>/", schema_view.without_ui(cache_timeout=0), name="schema-json"
     ),
@@ -37,6 +36,7 @@ urlpatterns = [
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
     url(r"^api/products/", include("products.router"), name="products"),
+    url(r"^api/search/", include("search.router"), name="search"),
 ]
 
 # Only serve media files in development

@@ -76,7 +76,9 @@ class Migration(migrations.Migration):
                 (
                     "image",
                     models.ImageField(
-                        blank=True, null=True, upload_to=products.models.upload_to
+                        blank=True,
+                        null=True,
+                        upload_to=products.models.product.upload_to,
                     ),
                 ),
             ],

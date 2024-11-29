@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
+from django.urls import re_path as url
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from oauth2_provider import urls as oauth2_urls
@@ -35,6 +36,7 @@ urlpatterns = [
         name="schema-swagger-ui",
     ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+    url(r"^api/products/", include("products.router"), name="products"),
 ]
 
 # Only serve media files in development

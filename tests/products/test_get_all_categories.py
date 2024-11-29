@@ -7,7 +7,7 @@ from rest_framework import status
 def test_admin_can_create_category(api_client, admin_user):
     """Test that an admin user can create a category."""
     api_client.force_authenticate(user=admin_user)
-    url = reverse("category-list-create")
+    url = reverse("category-list")
     response = api_client.post(url, data={"name": "Test Category"})
 
     assert response.status_code == status.HTTP_201_CREATED
@@ -18,7 +18,7 @@ def test_admin_can_create_category(api_client, admin_user):
 def test_non_admin_cannot_create_category(api_client, regular_user):
     """Test that a non-admin user cannot create a category."""
     api_client.force_authenticate(user=regular_user)
-    url = reverse("category-list-create")
+    url = reverse("category-list")
     response = api_client.post(url, data={"name": "Test Category"})
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -28,12 +28,9 @@ def test_non_admin_cannot_create_category(api_client, regular_user):
 def test_get_all_categories(api_client, admin_user, setup_categories):
     """Test that an admin user can get the list of all categories."""
     api_client.force_authenticate(user=admin_user)
-    url = reverse("category-list-create")
+    url = reverse("category-list")
     response = api_client.get(url)
 
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 4
-    assert response.data[0]["name"] == "Category 1"
-    assert response.data[1]["name"] == "Category 2"
-    assert response.data[2]["name"] == "Category 3"
-    assert response.data[3]["name"] == "Category 4"
+    assert len(response.data["results"]) == 4
+    assert response.data["results"][0]["name"] == "Category 1"

@@ -4,71 +4,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from authentication.permissions import IsAdminOrStaff
 from products.models import Category, Product, Review
-from products.serializers import CategorySerializer, ProductSerializer, ReviewSerializer
-
-
-class CategoryListCreateView(generics.ListCreateAPIView):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    pagination_class = None
-
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [permissions.AllowAny()]
-        return [IsAdminOrStaff()]
-
-    @swagger_auto_schema(tags=["Categories"])
-    def get(self, request, *args, **kwargs):
-        cache_key = "category_list"
-        if cache_key in cache:
-            data = cache.get(cache_key)
-        else:
-
-            response = super().list(request, *args, **kwargs)
-            cache.set(cache_key, response.data, timeout=60 * 60)
-            data = response.data
-        return Response(data)
-
-    @swagger_auto_schema(tags=["Categories"])
-    def post(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        cache.delete("category_list")
-        return Response(response.data, status=status.HTTP_201_CREATED)
-
-
-class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrStaff]
-
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [permissions.AllowAny()]
-        return [IsAdminOrStaff()]
-
-    @swagger_auto_schema(tags=["Categories"])
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
-
-    @swagger_auto_schema(tags=["Categories"])
-    def put(self, request, *args, **kwargs):
-        response = super().update(request, *args, **kwargs)
-        cache.delete("category_list")
-        return Response(response.data, status=status.HTTP_200_OK)
-
-    @swagger_auto_schema(tags=["Categories"])
-    def patch(self, request, *args, **kwargs):
-        response = super().partial_update(request, *args, **kwargs)
-        cache.delete("category_list")
-        return Response(response.data, status=status.HTTP_200_OK)
-
-    @swagger_auto_schema(tags=["Categories"])
-    def delete(self, request, *args, **kwargs):
-        super().destroy(request, *args, **kwargs)
-        cache.delete("category_list")
-        return Response(status=status.HTTP_204_NO_CONTENT)
+from products.serializers import CategorySerializer, ProductSerializer, \
+    ReviewSerializer
 
 
 class CategoryRetrieveBySlugView(generics.RetrieveAPIView):

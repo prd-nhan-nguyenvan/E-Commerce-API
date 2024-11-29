@@ -4,10 +4,10 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
 from authentication.permissions import IsAdminOrStaff
-from products.helpers import invalidate_product_cache
 from products.models import Product
 from products.serializers import ProductSerializer
 from products.tasks import delete_product_from_es, index_product_task
+from products.utils import invalidate_product_cache
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):

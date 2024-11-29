@@ -29,3 +29,48 @@ class CategoryViewSet(viewsets.ViewSet):
         serializer.save()
         CategoryService.invalidate_category_cache()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(tags=["Categories"])
+    def retrieve(self, request, pk=None):
+        category = CategoryService.get_category(pk)
+        return Response(CategorySerializer(category).data, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(tags=["Categories"])
+    def update(self, request, pk=None):
+        category = CategoryService.get_category(pk)
+        if not category:
+            return Response(
+                {"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Deserialize and validate the request data
+        serializer = CategorySerializer(
+            category, data=request.data, partial=False, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        # Save the updated instance
+        updated_category = serializer.save()  # This returns the model instance
+
+        # Invalidate the cache for consistency
+        CategoryService.invalidate_category_cache()
+
+        # Serialize the updated instance to send as a response
+        response_data = CategorySerializer(updated_category).data
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(tags=["Categories"])
+    def destroy(self, request, pk=None):
+        category = CategoryService.get_category(pk)
+        category.delete()
+        CategoryService.invalidate_category_cache()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @swagger_auto_schema(tags=["Categories"])
+    def put(self, request, pk=None):
+        return self.update(request, pk)
+
+    @swagger_auto_schema(tags=["Categories"])
+    def patch(self, request, pk=None):
+        return self.update(request, pk)

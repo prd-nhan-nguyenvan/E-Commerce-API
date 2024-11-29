@@ -51,6 +51,16 @@ class CategoryService:
         }
 
     @classmethod
+    def get_category(cls, pk):
+        """
+        Fetch a single category by primary key.
+        """
+        category = Category.objects.filter(pk=pk).first()
+        if not category:
+            return None  # or raise an exception if preferred
+        return category
+
+    @classmethod
     def invalidate_category_cache(cls):
         """
         Invalidate all cached category lists by deleting related keys.

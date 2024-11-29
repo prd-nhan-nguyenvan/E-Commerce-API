@@ -37,7 +37,7 @@ def cart(user):
 def product(api_client, admin_user):
     api_client.force_authenticate(user=admin_user)
     category_response = api_client.post(
-        reverse("category-list-create"),
+        reverse("category-list"),
         data={"name": "Category 1", "description": "Description 1"},
     )
     product_response = api_client.post(

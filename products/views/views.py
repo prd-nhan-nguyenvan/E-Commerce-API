@@ -9,35 +9,6 @@ from products.models import Category, Product, Review
 from products.serializers import CategorySerializer, ProductSerializer, ReviewSerializer
 
 
-class CategoryListCreateView(generics.ListCreateAPIView):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-    pagination_class = None
-
-    def get_permissions(self):
-        if self.request.method == "GET":
-            return [permissions.AllowAny()]
-        return [IsAdminOrStaff()]
-
-    @swagger_auto_schema(tags=["Categories"])
-    def get(self, request, *args, **kwargs):
-        cache_key = "category_list"
-        if cache_key in cache:
-            data = cache.get(cache_key)
-        else:
-
-            response = super().list(request, *args, **kwargs)
-            cache.set(cache_key, response.data, timeout=60 * 60)
-            data = response.data
-        return Response(data)
-
-    @swagger_auto_schema(tags=["Categories"])
-    def post(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        cache.delete("category_list")
-        return Response(response.data, status=status.HTTP_201_CREATED)
-
-
 class CategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer

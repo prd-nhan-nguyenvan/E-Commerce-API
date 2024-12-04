@@ -1,3 +1,4 @@
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -16,6 +17,22 @@ class ProductSuggestionSearchViewSet(viewsets.ViewSet):
 
     @swagger_auto_schema(
         tags=["Search"],
+        operation_summary="Get suggestions for search query",
+        operation_description="Get suggestions for search query",
+        manual_parameters=[
+            openapi.Parameter(
+                "query",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description="Search query",
+            ),
+            openapi.Parameter(
+                "limit",
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+                description="Number of suggestions to return",
+            ),
+        ],
         responses={200: SuggestionSearchResponseSerializer(), 400: "Bad request"},
     )
     @action(detail=False, methods=["get"])

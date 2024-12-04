@@ -5,7 +5,7 @@ from rest_framework import status
 
 @pytest.fixture
 def url():
-    return reverse("product-list-create")
+    return reverse("product-list")
 
 
 @pytest.mark.django_db

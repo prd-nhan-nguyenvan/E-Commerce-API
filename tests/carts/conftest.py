@@ -41,7 +41,7 @@ def product(api_client, admin_user):
         data={"name": "Category 1", "description": "Description 1"},
     )
     product_response = api_client.post(
-        reverse("product-list-create"),
+        reverse("product-list"),
         data={
             "category": category_response.data["id"],
             "name": "Organic Extra Virgin Olive Oil",

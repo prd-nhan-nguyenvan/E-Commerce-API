@@ -4,7 +4,6 @@ from products.views import (
     BulkImportProductView,
     CategoryRetrieveBySlugView,
     ProductESSearchView,
-    ProductListCreateView,
     ProductRetrieveBySlugView,
     ProductRetrieveUpdateDestroyView,
     ProductReviewListView,
@@ -18,7 +17,6 @@ urlpatterns = [
         CategoryRetrieveBySlugView.as_view(),
         name="category-detail-by-slug",
     ),
-    path("products/", ProductListCreateView.as_view(), name="product-list-create"),
     path(
         "products/<int:pk>/",
         ProductRetrieveUpdateDestroyView.as_view(),

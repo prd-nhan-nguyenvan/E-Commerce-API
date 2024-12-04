@@ -46,6 +46,13 @@ class UserListSerializer(serializers.ModelSerializer):
         fields = ["id", "email", "username", "role", "is_active", "date_joined"]
 
 
+class PaginationUserListSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_blank=True)
+    previous = serializers.CharField(allow_blank=True)
+    results = UserListSerializer(many=True)
+
+
 class UserSupportDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile

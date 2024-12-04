@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import authenticate, login
 from django.utils.timezone import now
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from oauth2_provider.models import AccessToken, Application, RefreshToken
 from rest_framework import generics, permissions, status
@@ -27,8 +28,14 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     @swagger_auto_schema(
+        operation_summary="User Login",
+        operation_description="Authenticate a user and return access and refresh tokens.",
         request_body=LoginSerializer,
-        responses={201: LoginResponseSerializer, 400: "Invalid credentials"},
+        responses={
+            201: LoginResponseSerializer,
+            400: "Invalid credentials or validation error.",
+        },
+        tags=["Authentication"],
     )
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -89,7 +96,19 @@ class LoginView(APIView):
 class CustomTokenRefreshView(APIView):
     permission_classes = [permissions.AllowAny]
 
-    @swagger_auto_schema(request_body=RefreshTokenSerializer)
+    @swagger_auto_schema(
+        operation_summary="Refresh Access Token",
+        operation_description=(
+            "Provide a refresh token to generate a new access token. "
+            "The refresh token remains valid for its lifetime."
+        ),
+        request_body=RefreshTokenSerializer,
+        responses={
+            201: LoginResponseSerializer,
+            400: "Invalid refresh token or other errors.",
+        },
+        tags=["Authentication"],
+    )
     def post(self, request):
         serializer = RefreshTokenSerializer(data=request.data)
 
@@ -139,7 +158,19 @@ class RegisterView(CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
 
-    @swagger_auto_schema(request_body=RegisterSerializer)
+    @swagger_auto_schema(
+        operation_summary="Register User",
+        operation_description="Register a new user account.",
+        request_body=RegisterSerializer,
+        responses={
+            201: openapi.Response("User registered successfully."),
+            400: "Validation errors in the registration process.",
+        },
+        tags=["Authentication"],
+    )
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, role=ROLE_USER)
         serializer.is_valid(raise_exception=True)
@@ -153,8 +184,33 @@ class CreateStaffView(CreateAPIView):
     permission_classes = [IsAdmin]
     serializer_class = RegisterSerializer
 
-    @swagger_auto_schema(request_body=RegisterSerializer)
-    def create(self, request):
+    @swagger_auto_schema(
+        operation_summary="Create Staff Account",
+        operation_description="Allows admin users to create staff accounts.",
+        request_body=RegisterSerializer,
+        responses={
+            201: openapi.Response(
+                "Staff account created successfully.",
+                examples={
+                    "application/json": {
+                        "message": "Staff account created successfully.",
+                        "user": {
+                            "id": 1,
+                            "email": "staff@example.com",
+                            "role": "Staff",
+                        },
+                    }
+                },
+            ),
+            403: "Permission denied for non-admin users.",
+            400: "Validation errors in the creation process.",
+        },
+        tags=["Authentication"],
+    )
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, role=ROLE_STAFF)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -170,6 +226,7 @@ class CreateStaffView(CreateAPIView):
 class ChangePasswordView(generics.UpdateAPIView):
     serializer_class = ChangePasswordSerializer
     permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ["patch"]
 
     def get_object(self):
         return self.request.user
@@ -184,7 +241,19 @@ class ChangePasswordView(generics.UpdateAPIView):
             {"message": "Password updated successfully."}, status=status.HTTP_200_OK
         )
 
-    @swagger_auto_schema(request_body=ChangePasswordSerializer)
+    @swagger_auto_schema(
+        operation_summary="Change Password",
+        operation_description=(
+            "Allow authenticated users to change their password. "
+            "The current password must be provided for verification."
+        ),
+        request_body=ChangePasswordSerializer,
+        responses={
+            200: "Password updated successfully.",
+            400: "Validation errors or incorrect current password.",
+        },
+        tags=["User"],
+    )
     def patch(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
 
@@ -192,6 +261,17 @@ class ChangePasswordView(generics.UpdateAPIView):
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @swagger_auto_schema(
+        operation_summary="Logout",
+        operation_description=(
+            "Revoke access and refresh tokens for the authenticated user, logging them out."
+        ),
+        responses={
+            204: "User logged out successfully.",
+            400: "Error during the logout process.",
+        },
+        tags=["Authentication"],
+    )
     def post(self, request):
         try:
             token = request.auth.token

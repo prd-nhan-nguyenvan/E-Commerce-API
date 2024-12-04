@@ -13,3 +13,10 @@ class CategorySerializer(serializers.ModelSerializer):
             "description",
         ]
         read_only_fields = ["id", "slug"]
+
+
+class PaginatedCategorySerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField()
+    previous = serializers.CharField()
+    results = CategorySerializer(many=True)

@@ -62,3 +62,10 @@ class ProductSerializer(serializers.ModelSerializer):
                 )
 
         return data
+
+
+class PaginatedProductSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    next = serializers.CharField(allow_blank=True)
+    previous = serializers.CharField(allow_blank=True)
+    results = ProductSerializer(many=True)

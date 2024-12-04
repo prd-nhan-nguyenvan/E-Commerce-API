@@ -1,6 +1,6 @@
 from django.core.cache import cache
-from rest_framework.pagination import LimitOffsetPagination
 
+from core.services.BaseService import BaseService
 from products.models import Category
 from products.serializers import CategorySerializer
 
@@ -14,41 +14,17 @@ class CategoryService:
         offset = int(request.query_params.get("offset", 0))
         limit = int(request.query_params.get("limit", 10))
 
-        # Generate a unique cache key based on offset and limit
         cache_key = f"category_list_{offset}_{limit}"
         cached_data = cache.get(cache_key)
 
         if cached_data:
             return cached_data
-        # Query the database for categories
-        categories = Category.objects.all()
 
-        # Use DRF's pagination utility
-        paginator = LimitOffsetPagination()
-        paginator.default_limit = limit
-        paginated_categories = paginator.paginate_queryset(categories, request)
+        categories = Category.objects.only("id", "name", "slug", "description")
+        data = BaseService.paginate(categories, request, CategorySerializer)
+        cache.set(cache_key, data)
 
-        # Serialize the paginated data
-        serializer = CategorySerializer(paginated_categories, many=True)
-
-        # Cache the paginated data
-        cache.set(
-            cache_key,
-            {
-                "count": paginator.count,
-                "next": paginator.get_next_link(),
-                "previous": paginator.get_previous_link(),
-                "results": serializer.data,
-            },
-        )
-
-        # Return the paginated response
-        return {
-            "count": paginator.count,
-            "next": paginator.get_next_link(),
-            "previous": paginator.get_previous_link(),
-            "results": serializer.data,
-        }
+        return data
 
     @classmethod
     def get_category(cls, pk):

@@ -1,3 +1,4 @@
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import generics, permissions, status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -20,12 +21,32 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             return [permissions.AllowAny()]
         return [IsAdminOrStaff()]
 
-    @swagger_auto_schema(tags=["Products"])
+    @swagger_auto_schema(
+        tags=["Products"],
+        operation_summary="Retrieve product details",
+        operation_description="Retrieve the details of a specific product by its ID.",
+        responses={
+            200: ProductSerializer,
+            404: openapi.Response(description="Product not found"),
+        },
+    )
     def get(self, request, *args, **kwargs):
         """Retrieve product details."""
         return super().retrieve(request, *args, **kwargs)
 
-    @swagger_auto_schema(tags=["Products"])
+    @swagger_auto_schema(
+        tags=["Products"],
+        operation_summary="Update product details",
+        operation_description=(
+            "Update the details of a product. "
+            "Includes validation for price and sell price."
+        ),
+        request_body=ProductSerializer,
+        responses={
+            200: ProductSerializer,
+            400: openapi.Response(description="Validation error"),
+        },
+    )
     def put(self, request, *args, **kwargs):
         """Update product details."""
         product = self.get_object()
@@ -53,7 +74,16 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
         return Response(response.data, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(tags=["Products"])
+    @swagger_auto_schema(
+        tags=["Products"],
+        operation_summary="Partially update product details",
+        operation_description="Update specific fields of a product.",
+        request_body=ProductSerializer,
+        responses={
+            200: ProductSerializer,
+            400: openapi.Response(description="Validation error"),
+        },
+    )
     def patch(self, request, *args, **kwargs):
         """Partially update product details."""
         response = super().partial_update(request, *args, **kwargs)
@@ -65,9 +95,16 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
         return Response(response.data, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(tags=["Products"])
+    @swagger_auto_schema(
+        tags=["Products"],
+        operation_summary="Delete a product",
+        operation_description="Delete a product by its ID. This action is irreversible.",
+        responses={
+            204: openapi.Response(description="Product successfully deleted"),
+            404: openapi.Response(description="Product not found"),
+        },
+    )
     def delete(self, request, *args, **kwargs):
-        """Delete a product."""
         product = self.get_object()
         super().destroy(request, *args, **kwargs)
 

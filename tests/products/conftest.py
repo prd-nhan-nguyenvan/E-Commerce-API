@@ -1,24 +1,7 @@
 import pytest
-from rest_framework.test import APIClient
 
 from authentication.models import CustomUser
 from products.factories import CategoryFactory, ProductFactory
-
-
-@pytest.fixture
-def api_client():
-    """Fixture for setting up an API client."""
-    return APIClient()
-
-
-@pytest.fixture
-def admin_user(db):
-    """Fixture for creating an admin user."""
-    return CustomUser.objects.create_superuser(
-        email="admintest@gmail.com",
-        username="adminuser",
-        password="adminpassword",
-    )
 
 
 @pytest.fixture
@@ -50,7 +33,7 @@ def setup_products(api_client, admin_user):
 
 
 @pytest.fixture
-def product_data(category):
+def product_data(category, mock_image):
     """Fixture for creating product data."""
     return dict(
         {
@@ -61,19 +44,9 @@ def product_data(category):
             "sell_price": "8.99",
             "on_sell": True,
             "stock": 100,
+            "image": mock_image,
         }
     )
-
-
-@pytest.fixture
-def category():
-    """Fixture for creating a category with a factory."""
-    return CategoryFactory(name="Test Category")
-
-
-@pytest.fixture
-def product(category):
-    return ProductFactory(name="Test Product", category=category)
 
 
 @pytest.fixture

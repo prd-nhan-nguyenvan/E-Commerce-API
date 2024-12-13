@@ -23,14 +23,15 @@ class TestProductDetail:
         assert response.data["name"] == product.name
         assert response.data["description"] == product.description
 
-    def test_put(self, api_client, url, product, product_data, admin_user):
-
+    def test_put(
+        self, api_client, url, product, product_data, admin_user, mock_edited_image
+    ):
         data = product_data
         data["name"] = "new name"
         data["description"] = "new description"
-
+        data["image"] = mock_edited_image
         api_client.force_authenticate(user=admin_user)
-        response = api_client.put(url, data)
+        response = api_client.put(url, data, format="multipart")
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -38,13 +39,14 @@ class TestProductDetail:
         assert response.data["name"] == data["name"]
         assert response.data["description"] == data["description"]
 
-    def test_invalid_put(self, api_client, url, product, admin_user):
+    def test_invalid_put(self, api_client, url, admin_user):
         data = {"price": -100}
         api_client.force_authenticate(user=admin_user)
         response = api_client.put(url, data)
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "error" in response.data
+        assert "price" in response.data
+        assert response.data["price"] == ["Price cannot be negative."]
 
     def test_patch(self, api_client, url, product, admin_user):
         data = {"name": "Updated name"}

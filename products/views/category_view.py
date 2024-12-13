@@ -74,6 +74,10 @@ class CategoryViewSet(viewsets.ViewSet):
     )
     def retrieve(self, request, pk=None):
         category = CategoryService.get_category(pk)
+        if not category:
+            return Response(
+                {"detail": "Category not found."}, status=status.HTTP_404_NOT_FOUND
+            )
         return Response(CategorySerializer(category).data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(

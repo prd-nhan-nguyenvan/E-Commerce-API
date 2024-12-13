@@ -6,7 +6,9 @@ class BaseService:
     def paginate(queryset, request, serializer_class):
         paginator = LimitOffsetPagination()
         paginated_data = paginator.paginate_queryset(queryset, request)
-        serialized_data = serializer_class(paginated_data, many=True)
+        serialized_data = serializer_class(
+            paginated_data, many=True, context={"request": request}
+        )
         return {
             "count": paginator.count,
             "next": paginator.get_next_link(),

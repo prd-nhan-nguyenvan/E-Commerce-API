@@ -175,7 +175,7 @@ CACHES = {
 ELASTICSEARCH_DSL = {
     "default": {
         "hosts": f'http://{config("ES_HOST")}:{config("ES_PORT")}',
-        "http_auth": ("elastic", config("ELASTIC_PASSWORD")),
+        "http_auth": ("elastic", config("ES_PASSWORD")),
         "verify_certs": False,
     }
 }

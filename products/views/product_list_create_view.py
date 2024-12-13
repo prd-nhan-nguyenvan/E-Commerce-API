@@ -6,9 +6,7 @@ from rest_framework.response import Response
 
 from authentication.permissions import IsAdminOrStaff
 from products.serializers import ProductSerializer
-from products.services.product.ProductService import ProductService
-from products.tasks import index_product_task
-from products.utils import invalidate_product_cache
+from products.services.product.product_service import ProductService
 
 
 class ProductViewSet(viewsets.ViewSet):
@@ -29,7 +27,8 @@ class ProductViewSet(viewsets.ViewSet):
             openapi.Parameter("limit", openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
             openapi.Parameter("offset", openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
             openapi.Parameter("category", openapi.IN_QUERY, type=openapi.TYPE_INTEGER),
-            openapi.Parameter("price", openapi.IN_QUERY, type=openapi.TYPE_NUMBER),
+            openapi.Parameter("price_lt", openapi.IN_QUERY, type=openapi.TYPE_NUMBER),
+            openapi.Parameter("price_gt", openapi.IN_QUERY, type=openapi.TYPE_NUMBER),
             openapi.Parameter("name", openapi.IN_QUERY, type=openapi.TYPE_STRING),
             openapi.Parameter(
                 "description", openapi.IN_QUERY, type=openapi.TYPE_STRING
@@ -57,11 +56,9 @@ class ProductViewSet(viewsets.ViewSet):
         Create a new product.
         """
         serializer = ProductSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        product = ProductService.create_product(serializer.validated_data)
-
-        # Trigger background tasks
-        index_product_task.delay(product.id)
-        invalidate_product_cache()
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            product = ProductService.create_product(serializer.validated_data)
+            return Response(
+                ProductSerializer(product).data, status=status.HTTP_201_CREATED
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

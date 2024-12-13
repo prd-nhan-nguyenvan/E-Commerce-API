@@ -10,6 +10,7 @@ def url():
     return reverse("bulk-import-products")
 
 
+@pytest.mark.django_db
 def test_bulk_import_no_file_provided(api_client, url, mock_bulk_import, admin_user):
 
     api_client.force_authenticate(user=admin_user)
@@ -21,6 +22,7 @@ def test_bulk_import_no_file_provided(api_client, url, mock_bulk_import, admin_u
     assert response.data["error"] == "No file provided."
 
 
+@pytest.mark.django_db
 def test_bulk_import_with_valid_file(api_client, url, mock_bulk_import, admin_user):
     csv_file = BytesIO(
         b"name,description,price,sell_price,on_sell,stock,category_name,image_url\nProduct1,Description1,10,9,1,100,Category1,https://example.com/image1.jpg\nProduct2,Description2,20,18,0,200,Category2,https://example.com/image2.jpg"
@@ -35,6 +37,7 @@ def test_bulk_import_with_valid_file(api_client, url, mock_bulk_import, admin_us
     mock_bulk_import.assert_called_once()
 
 
+@pytest.mark.django_db
 def test_bulk_import_with_invalid_csv(api_client, url, mock_bulk_import, admin_user):
     invalid_csv_file = BytesIO(
         b"name,description\nProduct1,Description1\nProduct2,Description2"

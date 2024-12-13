@@ -7,8 +7,7 @@ from rest_framework.response import Response
 from authentication.permissions import IsAdminOrStaff
 from products.models import Product
 from products.serializers import ProductSerializer
-from products.tasks import delete_product_from_es, index_product_task
-from products.utils import invalidate_product_cache
+from products.services.product import ProductService
 
 
 class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -31,8 +30,11 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         },
     )
     def get(self, request, *args, **kwargs):
-        """Retrieve product details."""
-        return super().retrieve(request, *args, **kwargs)
+        product = ProductService.get_product(kwargs.get("pk"))
+        if not product:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = ProductSerializer(product)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         tags=["Products"],
@@ -48,31 +50,13 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         },
     )
     def put(self, request, *args, **kwargs):
-        """Update product details."""
-        product = self.get_object()
-        data = request.data
-
-        if "price" in data and float(data["price"]) < 0:
-            return Response(
-                {"error": "Price cannot be negative."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if "sell_price" in data and float(data["sell_price"]) > float(
-            data.get("price", product.price)
-        ):
-            return Response(
-                {"error": "Sell price cannot be greater than the regular price."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        response = super().update(request, *args, **kwargs)
-
-        invalidate_product_cache()
-
-        index_product_task.delay(product.id)
-
-        return Response(response.data, status=status.HTTP_200_OK)
+        product = ProductService.get_product(kwargs.get("pk"))
+        if not product:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        data, errors = ProductService.update_product(product, request.data)
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         tags=["Products"],
@@ -85,15 +69,13 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         },
     )
     def patch(self, request, *args, **kwargs):
-        """Partially update product details."""
-        response = super().partial_update(request, *args, **kwargs)
-
-        invalidate_product_cache()
-
-        product_id = kwargs["pk"]
-        index_product_task.delay(product_id)
-
-        return Response(response.data, status=status.HTTP_200_OK)
+        product = ProductService.get_product(kwargs.get("pk"))
+        if not product:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        data, errors = ProductService.update_product(product, request.data)
+        if errors:
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         tags=["Products"],
@@ -105,10 +87,8 @@ class ProductRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         },
     )
     def delete(self, request, *args, **kwargs):
-        product = self.get_object()
-        super().destroy(request, *args, **kwargs)
-
-        invalidate_product_cache()
-
-        delete_product_from_es.delay(product.id)
+        product = ProductService.get_product(kwargs.get("pk"))
+        if not product:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        ProductService.delete_product(product)
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -29,10 +29,10 @@ services:
     image: 'elasticsearch:7.10.1'
     container_name: elasticsearch
     ports:
-      - 9205:9200
+      - "${ES_PORT}:9200"
     environment:
       - "discovery.type=single-node"
-      - transport.tcp.port=9205
+      - 'transport.tcp.port=${ES_PORT}'
       - http.port=9200
       - http.cors.allow-credentials=true
       - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
